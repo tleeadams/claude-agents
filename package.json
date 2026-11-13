@@ -1,0 +1,21 @@
+{
+  "name": "claude-agents",
+  "version": "1.0.0",
+  "description": "Local dashboard showing every running Claude Code session and its live status",
+  "private": true,
+  "main": "server.js",
+  "bin": {
+    "claude-agents": "server.js"
+  },
+  "scripts": {
+    "start": "node server.js --open",
+    "serve": "node server.js",
+    "check": "node server.js --once",
+    "install-shortcut": "node scripts/install-shortcut.js",
+    "uninstall-shortcut": "node scripts/install-shortcut.js --uninstall"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

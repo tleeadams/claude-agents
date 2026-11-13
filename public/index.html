@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="agents-token" content="%%TOKEN%%">
+  <title>Claude Agents</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <button type="button" id="menu-button" class="icon-btn menu-button" aria-label="Open the repository menu" aria-haspopup="dialog" aria-controls="repos">
+      <span class="burger" aria-hidden="true"></span>
+    </button>
+    <div class="brand">
+      <img src="/favicon.svg" alt="" width="22" height="22">
+      <h1>Claude Agents</h1>
+      <span id="host" class="host"></span>
+    </div>
+    <nav class="filters" aria-label="Filter by status">
+      <button type="button" data-filter="all" aria-pressed="true">All <b id="n-all">0</b></button>
+      <button type="button" data-filter="needs" aria-pressed="false">Needs you <b id="n-needs">0</b></button>
+      <button type="button" data-filter="working" aria-pressed="false">Working <b id="n-working">0</b></button>
+      <button type="button" data-filter="idle" aria-pressed="false">Idle <b id="n-idle">0</b></button>
+    </nav>
+    <button type="button" id="sound" class="sound" aria-pressed="true" aria-label="Sound">
+      <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+        <path d="M10 2.75a4.25 4.25 0 0 0-4.25 4.25v3.1L4.2 13.25h11.6L14.25 10.1V7A4.25 4.25 0 0 0 10 2.75Z"/>
+        <path d="M8.25 15.5a1.75 1.75 0 0 0 3.5 0"/>
+        <path class="slash" d="M3.5 3.5l13 13"/>
+      </svg>
+      <span id="sound-label"></span>
+    </button>
+    <div id="conn" class="conn" role="status">
+      <span class="conn-dot"></span><span id="updated">Connecting…</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="list" class="list"></div>
+    <div id="empty" class="empty" hidden>
+      <p class="empty-title">No Claude Code sessions are running.</p>
+      <p>Start one with <code>claude</code> in any terminal and it will appear here within a few seconds.</p>
+    </div>
+  </main>
+
+  <dialog id="repos" class="drawer" aria-labelledby="repos-title">
+    <div class="drawer-head">
+      <div class="drawer-titles">
+        <h2 id="repos-title">Repositories</h2>
+        <p id="repos-root" class="drawer-sub">Loading…</p>
+      </div>
+      <button type="button" id="repos-refresh" class="icon-btn" title="Rescan for repos" aria-label="Rescan for repos">↻</button>
+      <button type="button" id="repos-close" class="icon-btn" title="Close" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-search">
+      <input id="repos-filter" type="search" placeholder="Filter repos" aria-label="Filter repos" autocomplete="off" spellcheck="false">
+    </div>
+    <nav id="repos-tree" class="tree" aria-label="Repositories"></nav>
+    <p class="drawer-foot">Click a repo to open a Windows Terminal tab there running <code id="repos-command">claude</code>.</p>
+  </dialog>
+
+  <dialog id="confirm" class="confirm">
+    <form method="dialog">
+      <h2>Stop <span id="confirm-name"></span>?</h2>
+      <p>This force-ends PID <span id="confirm-pid"></span> along with its shells and MCP servers. Anything the current turn hasn't saved is lost.</p>
+      <p>You can reopen the conversation later with:</p>
+      <pre id="confirm-resume"></pre>
+      <div class="confirm-actions">
+        <button value="cancel" class="btn" autofocus>Cancel</button>
+        <button value="stop" class="btn btn-danger">Stop agent</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

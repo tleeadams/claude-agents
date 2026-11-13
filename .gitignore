@@ -1,0 +1,5 @@
+# Built by `npm run install-shortcut`; machine-specific.
+launcher/ClaudeAgents.exe
+launcher/app.ico
+launcher/node-path.txt
+node_modules/
