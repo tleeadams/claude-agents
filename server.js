@@ -9,11 +9,15 @@ const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { snapshot, findAgent, sessionFile, rememberTab } = require('./lib/agents');
 const { scanRepos, resolveRepo } = require('./lib/repos');
+const settings = require('./lib/settings');
+const history = require('./lib/history');
+const todos = require('./lib/todos');
 
 const PORT = Number(process.env.PORT) || 4317;
 const HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const FOCUS_SCRIPT = path.join(__dirname, 'lib', 'focus-window.ps1');
+const PICK_SCRIPT = path.join(__dirname, 'lib', 'pick-folder.ps1');
 // Fixed here rather than sent by the page, so the API can't type arbitrary
 // commands into agents.
 const CATCH_UP_PROMPT = (
@@ -21,7 +25,9 @@ const CATCH_UP_PROMPT = (
   "Catch me up: where do things stand? Briefly cover what's done, what's in progress, and anything you need from me."
 ).replace(/\s+/g, ' ');
 const IS_WIN = process.platform === 'win32';
-const CLAUDE_COMMAND = 'claude --dangerously-skip-permissions';
+// What new tabs run: plain `claude`, so Claude asks before acting, unless
+// Settings says to skip its permission prompts.
+const claudeCommand = () => (settings.get().skipPermissions ? 'claude --dangerously-skip-permissions' : 'claude');
 const SNAPSHOT_TTL_MS = 1000;
 // With --exit-when-idle (as the desktop launcher starts it), the server stops
 // once no dashboard has been open for this long.
@@ -46,6 +52,11 @@ function currentSnapshot() {
   if (!inflight) {
     inflight = snapshot()
       .then((snap) => {
+        // To-dos first: a to-do goes on its session's card, and from there
+        // into the history when the session closes.
+        todos.observe(snap.agents, snap.now);
+        snap.todos = todos.pending(snap.now);
+        history.observe(snap.agents, snap.now);
         cached = snap;
         cachedAt = Date.now();
         return snap;
@@ -173,24 +184,63 @@ function defaultTerminalProfile() {
 
 // Opens a tab in the most recently used Windows Terminal window, starting
 // Claude in `dir`. Claude runs inside a shell, so the tab stays open at a
-// prompt in that folder after Claude exits.
-function openClaude(dir) {
+// prompt in that folder after Claude exits. The command is always built here,
+// never sent by the page.
+function openClaude(dir, command = claudeCommand()) {
   return new Promise((resolve) => {
     if (!IS_WIN) {
       resolve({ ok: false, error: 'Opening a terminal is only supported on Windows.' });
+      return;
+    }
+    // Windows Terminal reads a semicolon anywhere in its arguments as the start
+    // of another command.
+    if (dir.includes(';')) {
+      resolve({ ok: false, error: "Windows Terminal can't open a folder with a semicolon in its path." });
       return;
     }
     const shell = onPath('pwsh.exe') ? 'pwsh.exe' : 'powershell.exe';
     const profile = defaultTerminalProfile();
     // Encoded, the command can't be split up or have its flags read by
     // Windows Terminal as its own.
-    const command = Buffer.from(CLAUDE_COMMAND, 'utf16le').toString('base64');
-    const args = ['-w', '0', 'new-tab', ...(profile ? ['-p', profile] : []), '-d', dir, shell, '-NoExit', '-EncodedCommand', command];
+    const encoded = Buffer.from(command, 'utf16le').toString('base64');
+    const args = ['-w', '0', 'new-tab', ...(profile ? ['-p', profile] : []), '-d', dir, shell, '-NoExit', '-EncodedCommand', encoded];
     const child = spawn('wt.exe', args, { detached: true, stdio: 'ignore' });
     child.on('error', (err) => resolve({ ok: false, error: `Couldn't start Windows Terminal: ${err.message}` }));
     child.on('spawn', () => {
       child.unref();
       resolve({ ok: true });
+    });
+  });
+}
+
+// Shows Windows' folder picker, in front of the other windows, and resolves to
+// { ok, path } or { ok, cancelled }. One at a time.
+let picking = false;
+
+function pickFolder(start, title) {
+  return new Promise((resolve) => {
+    if (!IS_WIN) {
+      resolve({ ok: false, error: 'The folder picker is only available on Windows.' });
+      return;
+    }
+    if (picking) {
+      resolve({ ok: false, error: 'A folder picker is already open. It may be behind another window.' });
+      return;
+    }
+    picking = true;
+    // pwsh has the newer dialog, with the address bar and the folder to start in.
+    const shell = onPath('pwsh.exe') ? 'pwsh.exe' : 'powershell.exe';
+    const script = `& {\n${fs.readFileSync(PICK_SCRIPT, 'utf8')}\n}`;
+    const args = ['-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')];
+    const env = { ...process.env, AGENTS_PICK_START: start || '', AGENTS_PICK_TITLE: title || '' };
+    execFile(shell, args, { windowsHide: true, env, timeout: 30 * 60 * 1000 }, (err, stdout, stderr) => {
+      picking = false;
+      try {
+        resolve(JSON.parse(String(stdout).trim().split(/\r?\n/).pop()));
+      } catch {
+        const detail = String(stderr || err?.message || '').trim().split(/\r?\n/)[0];
+        resolve({ ok: false, error: detail || "The folder picker didn't open." });
+      }
     });
   });
 }
@@ -261,6 +311,48 @@ async function action(res, sessionId, name) {
   return send(res, 404, { ok: false, error: 'Unknown action.' });
 }
 
+// Everything about a to-do's folder and session is decided here: the folder
+// comes from the repo scan or the folder picker, never from the page, and the
+// session ID is made here.
+async function todoAction(res, id, name, body) {
+  const todo = todos.find(id);
+  if (!todo) return send(res, 404, { ok: false, error: 'That to-do no longer exists.' });
+  let result;
+  if (name === 'edit') result = todos.edit(id, body);
+  else if (name === 'delete') result = todos.remove(id);
+  else if (name === 'folder') {
+    let dir;
+    if (body.pick) {
+      const start = todo.cwd || settings.get().todoStartFolder || scanRepos(false).root;
+      const picked = await pickFolder(start, `Choose a folder for “${todo.title}”`);
+      if (!picked.ok || picked.cancelled) return send(res, picked.ok ? 200 : 500, picked);
+      dir = typeof picked.path === 'string' ? picked.path : '';
+      // Virtual folders, such as This PC, have no path.
+      if (!dir || !fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory()) {
+        return send(res, 400, { ok: false, error: "That isn't a folder Claude can start in. Choose one on a drive." });
+      }
+    } else {
+      dir = resolveRepo(body.repo);
+      if (!dir) return send(res, 404, { ok: false, error: 'That repo is not in the list. Rescan and try again.' });
+    }
+    result = todos.setFolder(id, dir);
+    if (result.ok) result.cwd = dir;
+  } else if (name === 'start') {
+    if (todos.isLive(id)) return send(res, 409, { ok: false, error: 'Its session is already running.' });
+    if (!todo.cwd) return send(res, 400, { ok: false, error: 'Choose a folder first.' });
+    if (!fs.existsSync(todo.cwd)) return send(res, 400, { ok: false, error: `Its folder no longer exists: ${todo.cwd}` });
+    const sessionId = crypto.randomUUID();
+    const opened = await openClaude(todo.cwd, `${claudeCommand()} --session-id ${sessionId}`);
+    if (!opened.ok) return send(res, 500, opened);
+    result = todos.started(id, sessionId);
+  }
+  if (result.ok) {
+    cached = null;
+    pushSnapshot();
+  }
+  return send(res, result.ok ? 200 : 400, result);
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     // Rejecting other Host headers blocks DNS-rebinding pages from reading prompts.
@@ -275,8 +367,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/stream') return openStream(req, res);
 
     if (req.method === 'GET' && url.pathname === '/api/repos') {
-      const { root, tree, count } = scanRepos(url.searchParams.has('refresh'));
-      return send(res, 200, { root, home: os.homedir(), tree, count, command: CLAUDE_COMMAND });
+      const { root, tree, all, count, excludedFolders } = scanRepos(url.searchParams.has('refresh'));
+      return send(res, 200, { root, home: os.homedir(), tree, all, count, excluded: excludedFolders.length, command: claudeCommand() });
+    }
+
+    if (url.pathname === '/api/settings') {
+      if (req.method === 'GET') return send(res, 200, { ok: true, settings: settings.get() });
+      if (req.method !== 'POST') return send(res, 405, { error: 'Use GET or POST' });
+      if (req.headers['x-agents-token'] !== TOKEN) return send(res, 403, { error: 'Missing or bad token' });
+      const result = settings.update(await readJson(req));
+      return send(res, result.ok ? 200 : 400, result);
     }
 
     if (url.pathname === '/api/repos/open') {
@@ -286,6 +386,44 @@ const server = http.createServer(async (req, res) => {
       if (!dir) return send(res, 404, { ok: false, error: 'That repo is not in the list. Rescan and try again.' });
       const result = await openClaude(dir);
       return send(res, result.ok ? 200 : 500, result);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/history') {
+      // A fresh snapshot first, so running sessions aren't mistaken for closed ones.
+      await currentSnapshot();
+      await history.backfill();
+      return send(res, 200, { ok: true, sessions: history.list() });
+    }
+
+    const resume = url.pathname.match(/^\/api\/history\/([0-9a-f-]{36})\/resume$/i);
+    if (resume) {
+      if (req.method !== 'POST') return send(res, 405, { error: 'Use POST' });
+      if (req.headers['x-agents-token'] !== TOKEN) return send(res, 403, { error: 'Missing or bad token' });
+      const past = history.find(resume[1]);
+      if (!past) return send(res, 404, { ok: false, error: 'That session is not in the history.' });
+      if (history.isLive(past.id)) return send(res, 409, { ok: false, error: 'That session is already running.' });
+      if (!fs.existsSync(past.cwd)) return send(res, 400, { ok: false, error: `Its folder no longer exists: ${past.cwd}` });
+      // The ID comes from the history's own records, which only hold UUIDs.
+      const result = await openClaude(past.cwd, `${claudeCommand()} --resume ${past.id}`);
+      return send(res, result.ok ? 200 : 500, result);
+    }
+
+    if (url.pathname === '/api/todos') {
+      if (req.method !== 'POST') return send(res, 405, { error: 'Use POST' });
+      if (req.headers['x-agents-token'] !== TOKEN) return send(res, 403, { error: 'Missing or bad token' });
+      const result = todos.create(await readJson(req));
+      if (result.ok) {
+        cached = null;
+        pushSnapshot();
+      }
+      return send(res, result.ok ? 200 : 400, result);
+    }
+
+    const t = url.pathname.match(/^\/api\/todos\/([0-9a-f-]{36})(?:\/(delete|folder|start))?$/i);
+    if (t) {
+      if (req.method !== 'POST') return send(res, 405, { error: 'Use POST' });
+      if (req.headers['x-agents-token'] !== TOKEN) return send(res, 403, { error: 'Missing or bad token' });
+      return await todoAction(res, t[1], t[2] || 'edit', await readJson(req));
     }
 
     const m = url.pathname.match(/^\/api\/agents\/([0-9a-f-]{36})\/(focus|catch-up|open-folder|stop)$/i);
@@ -331,6 +469,11 @@ async function main() {
       if (IS_WIN) detached('cmd.exe', ['/c', 'start', '', url]);
       else detached(process.platform === 'darwin' ? 'open' : 'xdg-open', [url]);
     }
+    // Fills in sessions that closed while the server wasn't running. After the
+    // first snapshot, so sessions that are still running aren't read.
+    currentSnapshot()
+      .then(() => history.backfill())
+      .catch(() => {});
     if (process.argv.includes('--exit-when-idle')) {
       setInterval(() => !streams.size && Date.now() - lastRequestAt > IDLE_EXIT_MS && process.exit(0), 30000).unref();
     }

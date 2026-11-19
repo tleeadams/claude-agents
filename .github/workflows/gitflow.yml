@@ -1,0 +1,27 @@
+name: Gitflow
+
+# Checks each pull request against the branch rules in scripts/gitflow.js:
+# which branches may merge into main and develop, and that a release or
+# hotfix sets its version and changelog. The rulesets require this check.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  gitflow:
+    name: Gitflow
+    runs-on: ubuntu-latest
+    steps:
+      # A hotfix waits on this check, so it's kept short: the runner's own
+      # Node is enough for the script.
+      - uses: actions/checkout@v7
+      # The branch names come from whoever opened the pull request, so they
+      # reach the script as environment variables, never as part of the command.
+      - name: Check the branches
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: node scripts/gitflow.js check-pr "$BASE" "$HEAD"

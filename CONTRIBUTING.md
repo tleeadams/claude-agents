@@ -1,0 +1,100 @@
+# Contributing
+
+## Branches
+
+The repository follows gitflow:
+
+| Branch | Comes from | Merges into | For |
+| --- | --- | --- | --- |
+| `main` | | | Releases only. Every commit on it is a merged release or hotfix, tagged `v<version>`. |
+| `develop` | `main` | | Where work comes together. Pull requests target it by default. |
+| `feature/<name>` | `develop` | `develop` | New work. Lowercase, with dashes: `feature/todo-cards`. |
+| `bugfix/<name>` | `develop` | `develop` | Fixes to unreleased work. |
+| `release/<version>` | `develop` | `main`, then `develop` | Getting a release ready: `release/0.2.0`. |
+| `hotfix/<version>` | `main` | `main`, then `develop` | Urgent fixes to a release: `hotfix/0.2.1`. |
+
+`main` and `develop` only change through pull requests, which merge with a merge commit. That keeps each branch's history and makes merging a release back into `develop` clean.
+
+### What enforces it
+
+- **On GitHub:** rulesets (`.github/rulesets`) stop direct pushes, force-pushes and deletion on `main` and `develop`. Before a pull request merges, the CI and Gitflow checks have to pass, and someone in `.github/CODEOWNERS` has to approve it (see [Reviews](#reviews)). The admin can skip waiting for CI and the review (see [The admin's fast path](#the-admins-fast-path)). The Gitflow check (`.github/workflows/gitflow.yml`) refuses a pull request from the wrong kind of branch. A pull request from a release or hotfix into `main` also has to set that version in `package.json` and have a section for it in `CHANGELOG.md`. Release tags can't be moved or deleted, and the release workflow only builds tags that are on `main`.
+- **On your computer:** git hooks catch the same mistakes before you push. Turn them on once after cloning:
+
+  ```
+  npm run setup
+  ```
+
+  They stop commits made directly on `main` or `develop`, commits on branches named outside the model, and pushes to `main` or `develop` once those exist. Merging into `develop` or `main` locally is allowed, but the result reaches GitHub through a pull request. The rules live in `scripts/gitflow.js`; `node scripts/gitflow.js check-branch <name>` checks a name.
+
+## Reviews
+
+A pull request into `main` or `develop` needs an approving review from someone listed in [`.github/CODEOWNERS`](.github/CODEOWNERS). Anyone can comment on a pull request, but only those reviewers' approvals count.
+
+- An approval only counts for what it saw. A new push dismisses it, and the latest push has to be approved by someone other than whoever made it.
+- Every review conversation has to be resolved before merging.
+- The repository's admin can merge a pull request without waiting for a review or for CI. See [The admin's fast path](#the-admins-fast-path).
+
+To let someone review, the admin:
+
+1. Gives them write access: Settings → Collaborators, or `gh api -X PUT repos/<owner>/<repo>/collaborators/<their-handle> -f permission=push`. GitHub ignores reviewers without it.
+2. Adds their handle to `.github/CODEOWNERS`, in a pull request like any other change. Changing that file needs an approval from someone already in it, so only existing reviewers can add new ones.
+
+Write access also lets them push branches. `main` and `develop` still only change through pull requests.
+
+### The admin's fast path
+
+The repository's admin can merge a pull request into `main` or `develop` straight away, without waiting for a review or for CI: tick **Merge without waiting for requirements to be met** when merging, or run `gh pr merge --merge --admin`. That's how an urgent hotfix goes out in about half a minute. It's also how the admin merges their own work while they're the only reviewer, since GitHub never lets authors approve their own pull requests.
+
+It's a choice made at each merge, not a different way of working. Open the pull request and request reviews as usual. Leave the box unticked to wait for the reviews and CI, as anyone else would.
+
+What the fast path never skips:
+- The change still arrives as a pull request from the right kind of branch, with a merge commit. Direct pushes to `main` and `develop` stay blocked, for the admin too.
+- The Gitflow check still has to pass, so a hotfix sets its version and changelog. It takes about half a minute.
+- CI still runs on the pull request, and on `main` after the merge. The release workflow runs the tests before it builds, so a hotfix that breaks them doesn't become a release.
+
+Only the "CI" and "Reviews" rulesets can be bypassed, and only by the admin, only while merging a pull request. People given write access to review can't bypass anything. For the admin's own pull requests to wait for a review as well, remove `bypass_actors` from `.github/rulesets/reviews.json` and run `npm run setup-github` again, once someone else can review.
+
+## Making a change
+
+```
+git switch develop && git pull
+git switch -c feature/<name>
+# work, commit, npm test
+git push -u origin feature/<name>
+```
+
+Then open a pull request into `develop` and ask for a review.
+
+Keep examples, tests and docs free of real names. Use made-up projects, folders and people (`work/acme/api`, "API - auth") rather than ones from your own computer or work.
+
+## Releasing
+
+1. Start the release from `develop`: `git switch -c release/<version> develop`. Set the version in `package.json` and add a `## <version>` section to `CHANGELOG.md`; the release notes come from it. Commit, push, and open a pull request into `main`.
+2. Merge it once the checks pass and it's been reviewed.
+3. Tag the merge on `main`: `git switch main && git pull && git tag v<version> && git push origin v<version>`.
+4. The Release workflow tests, builds the zips and makes a draft release. Check it and publish it.
+5. Open a pull request from `main` into `develop`, so `develop` has the release's changes.
+
+### Hotfixes
+
+A hotfix starts from `main` and goes back into it:
+
+```
+git switch main && git pull
+git switch -c hotfix/<version>
+# fix it, set the version in package.json, add a "## <version>" section to CHANGELOG.md, commit
+git push -u origin hotfix/<version>
+gh pr create --base main --fill
+gh pr merge --merge --admin      # the admin's fast path; otherwise wait for review and CI
+git switch main && git pull && git tag v<version> && git push origin v<version>
+gh pr create --base develop --head main --title "Bring v<version> into develop"
+```
+
+The tag starts the Release workflow, as for a release. The last pull request brings the fix into `develop`.
+
+## Setting up the GitHub repository
+
+For maintainers, once, after creating the repository on GitHub:
+
+1. Push `main` and `develop`. The rulesets would stop pushes that create them, so they come first.
+2. With the [GitHub CLI](https://cli.github.com) signed in as an admin of the repository, run `npm run setup-github`. It applies the rulesets in `.github/rulesets`, makes `develop` the default branch, allows only merge commits, deletes branches once merged, and turns on private vulnerability reporting. It also names anyone in `.github/CODEOWNERS` who doesn't have write access yet. Running it again updates the rulesets.

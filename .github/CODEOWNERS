@@ -1,0 +1,8 @@
+# Who can review. A pull request into main or develop needs an approving
+# review from someone listed here (the "Reviews" ruleset requires it), and
+# reviews from anyone else don't count.
+#
+# To let someone review: give them write access to the repository, then add
+# their GitHub handle to the line below, e.g. `* @owner @teammate`. Changing
+# this file needs an approval from someone already on it.
+* @tleeadams

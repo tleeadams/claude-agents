@@ -2,4 +2,6 @@
 launcher/ClaudeAgents.exe
 launcher/app.ico
 launcher/node-path.txt
+# Built by `npm run build`.
+dist/
 node_modules/
