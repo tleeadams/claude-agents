@@ -54,6 +54,10 @@ What the fast path never skips:
 
 Only the "CI" and "Reviews" rulesets can be bypassed, and only by the admin, only while merging a pull request. People given write access to review can't bypass anything. For the admin's own pull requests to wait for a review as well, remove `bypass_actors` from `.github/rulesets/reviews.json` and run `npm run setup-github` again, once someone else can review.
 
+### A check that failed elsewhere
+
+GitHub attaches check results to commits, not to pull requests. If two pull requests share a commit and one fails the Gitflow check, every pull request on that commit is blocked. That happens when a branch is opened against the wrong base and then the right one. Closing the wrong pull request doesn't clear it, and neither does re-running the right one's check. Either push a new commit to the branch, or delete the failed run: find it with `gh run list --workflow Gitflow` and remove it with `gh run delete <id>`.
+
 ## Making a change
 
 ```
