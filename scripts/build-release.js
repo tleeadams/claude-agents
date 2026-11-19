@@ -56,9 +56,10 @@ function bundleNode(from, to) {
   fs.copyFileSync(license, path.join(path.dirname(to), 'LICENSE'));
 }
 
-// The section of CHANGELOG.md headed with this version.
-function releaseNotes() {
-  const text = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
+// The section of the changelog headed with this version. A Windows checkout
+// has CRLF line endings, so they're evened out first.
+function releaseNotes(changelog, version) {
+  const text = changelog.replace(/\r\n/g, '\n');
   const escaped = version.replace(/\./g, '\\.');
   const match = text.match(new RegExp(`^## \\[?${escaped}\\]?.*\\n([\\s\\S]*?)(?=^## |(?![\\s\\S]))`, 'm'));
   if (!match || !match[1].trim()) throw new Error(`CHANGELOG.md has no notes under "## ${version}".`);
@@ -70,7 +71,7 @@ function main() {
   if (!target) throw new Error(`Releases for ${process.platform} aren't supported yet. Run the app from source with "npm start".`);
   const at = process.argv.indexOf('--node');
   const node = at > 0 ? path.resolve(process.argv[at + 1] || '') : process.execPath;
-  const notes = releaseNotes();
+  const notes = releaseNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version);
 
   fs.rmSync(DIST, { recursive: true, force: true });
   const name = `claude-agents-v${version}-${target.name}`;
@@ -86,9 +87,13 @@ function main() {
   console.log(`Built ${path.relative(ROOT, zip)} (${(fs.statSync(zip).size / 1048576).toFixed(1)} MB)\nSHA-256 ${hash}`);
 }
 
-try {
-  main();
-} catch (err) {
-  console.error(err.message);
-  process.exit(1);
+if (require.main === module) {
+  try {
+    main();
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 }
+
+module.exports = { releaseNotes };

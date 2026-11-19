@@ -35,6 +35,15 @@ test('the rulesets and code owners are well formed', () => {
   assert.match(owners, /^\* @[\w-]+/m, 'every file has an owner');
 });
 
+test('release notes come from the changelog, with either line ending', () => {
+  const { releaseNotes } = require('../scripts/build-release');
+  const changelog = '# Changelog\n\n## 0.2.0 - 2026-12-01\n\n- New.\n\n## 0.1.0 - 2026-11-19\n\n- First.\n';
+  assert.equal(releaseNotes(changelog, '0.2.0'), '- New.\n');
+  assert.equal(releaseNotes(changelog, '0.1.0'), '- First.\n');
+  assert.equal(releaseNotes(changelog.replace(/\n/g, '\r\n'), '0.1.0'), '- First.\n');
+  assert.throws(() => releaseNotes(changelog, '0.3.0'), /no notes under "## 0\.3\.0"/);
+});
+
 test('the launcher icon draws', () => {
   const pixels = draw(16);
   assert.equal(pixels.length, 16 * 16 * 4);
