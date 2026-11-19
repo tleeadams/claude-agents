@@ -20,19 +20,24 @@ Not yet confirmed in real use:
 - The theme setting, Todo filter and notification list (2026-11-19). Tested in headless Edge, where the list's clearing rules were run against simulated status changes. A real agent's change hasn't been seen to add or clear an entry yet.
 - History (2026-11-19). The transcript backfill ran against the real transcripts, and recording a close was tested with simulated snapshots. A real session closing, and Resume actually opening a tab, haven't been tried yet.
 - To-dos (2026-11-19). Creating, editing, choosing a folder from the repo menu, deleting and the Settings were tested in headless Edge; the session link and closing were unit-tested with simulated snapshots. The folder picker was opened from a test server and closed by a script: it showed in front, and both Cancel and Select Folder came back right. Not yet tried: a real Start, so whether Claude registers the `--session-id` it was given and the card hands over; and the picker from the real server.
-- Releases (2026-11-19). `npm run build` was run locally, and the zip extracted and launched: its launcher started the bundled Node server and found the open dashboard window. The tests pass on Windows, and on Linux in Docker with Node 18 and 24. Not yet run: the GitHub workflows themselves, the macOS tests, and a download from a real release (so SmartScreen's reaction to the unsigned launcher is unknown).
+- Releases (2026-11-19). The v0.1.0 zip was built from the tagged commit, checked file by file against it, extracted and run: its bundled Node server answered on every endpoint. The uploaded zip downloads back matching its checksum. The tests pass on Windows, and on Linux in Docker with Node 18 and 24. Not yet run: the GitHub workflows (see below), the macOS tests, and the launcher from a downloaded zip (so SmartScreen's reaction to the unsigned launcher is unknown).
 
-## Going public (2026-11-19)
+## Public (2026-11-19)
 
-Done: a GPL-3.0-or-later licence, the release build and workflows, tests and CI, SECURITY.md and CHANGELOG.md, and a safe default for new sessions. *Skip permission prompts* is a setting and is off unless chosen.
+The repository is public, and v0.1.0 is released. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
 
-No identifying information goes in the code, docs or history, including real work examples: use made-up names such as `work/acme/api`. The first commit was rewritten to match.
+No identifying information goes in the code, docs or history, including real work examples: use made-up names such as `work/acme/api`. The first commit was rewritten to match. Commits made locally are by "Lee" with the GitHub no-reply address. Merges made on GitHub's website use the account's profile name, with the same no-reply address.
 
-Gitflow is set up (see CONTRIBUTING.md): `main`, `develop` and `feature/public-release` exist locally, and the hooks are on in this clone. The GitHub half (`npm run setup-github`) can only run once the repository exists and `main` and `develop` are pushed. The rulesets' JSON hasn't been sent to GitHub yet, so it's unconfirmed that GitHub accepts every field.
+**GitHub Actions hasn't run on this repository at all.** No workflow was registered, for pushes or pull requests, and the account's other repositories have never run one either. It's probably something on the account, and the repository's Actions tab may say what. Until it runs:
+- The v0.1.0 release was built locally from the tag, the same way the Release workflow would, and published by hand.
+- The "Gitflow", "CI" and "Reviews" rulesets are on GitHub but disabled. Their checks can't report without Actions, so turning them on would block every merge, the admin's included. GitHub accepted all their fields, including the admin bypass and merge-commit-only.
+- Once a workflow has run, `npm run setup-github` switches them on (it matches them by name). Then try the admin bypass on a pull request: that bypassing "CI" and "Reviews" still leaves "Gitflow" enforced, and that `gh pr merge --admin` uses the bypass.
 
-Pull requests need an approving review from someone in `.github/CODEOWNERS`, which names only the owner's GitHub handle so far. That handle is also in the repository's URL. The admin can bypass the "CI" and "Reviews" rulesets when merging a pull request, for hotfixes and for their own work while they're the only reviewer. They can't bypass "Gitflow": pull requests only, from the right kind of branch, with merge commits and the Gitflow check. Not yet tried on GitHub: whether bypassing two rulesets leaves the third enforced, as GitHub documents, and whether `gh pr merge --admin` uses a ruleset bypass.
+Applied and working: `develop` as the default branch, merge commits only, merged branches deleted, private vulnerability reporting, and the release-tag ruleset (deleting `v0.1.0` was refused).
 
-Before the repo goes public:
+Pull requests will need an approving review from someone in `.github/CODEOWNERS`, which names only the owner's GitHub handle so far. That handle is also in the repository's URL.
+
+Still to do:
 - Code-signing the launcher would stop the SmartScreen warning. It needs a certificate, such as Azure Trusted Signing.
 - macOS and Linux need their own ways to open a terminal tab, find a window and pick a folder before they get releases.
 
