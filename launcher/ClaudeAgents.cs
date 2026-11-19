@@ -1,11 +1,14 @@
 // Opens the Claude Agents dashboard. Starts the dashboard server in the
 // background when it isn't running, then brings the dashboard's window to the
-// front, or opens one. Built by scripts/install-shortcut.js.
+// front, or opens one. --install adds Desktop and Start menu shortcuts to this
+// program, and --uninstall removes them. Built by scripts/launcher.js.
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -15,6 +18,7 @@ using System.Windows.Forms;
 static class Launcher
 {
     const string AppName = "Claude Agents";
+    const string ShortcutName = "Claude Agents.lnk";
     const int Port = 4317;
     // The page sets this title, with a count in front when agents need you.
     static readonly Regex WindowTitle = new Regex(@"^(\(\d+\) )?Claude Agents$");
@@ -29,17 +33,40 @@ static class Launcher
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
 
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
         try
         {
-            string root = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".."));
+            bool quiet = Array.IndexOf(args, "--quiet") >= 0;
+            if (Array.IndexOf(args, "--install") >= 0)
+            {
+                string made = string.Join("\n", Shortcuts(true));
+                if (!quiet) Tell("Added shortcuts:\n" + made);
+                return;
+            }
+            if (Array.IndexOf(args, "--uninstall") >= 0)
+            {
+                string removed = string.Join("\n", Shortcuts(false));
+                if (!quiet) Tell(removed.Length > 0 ? "Removed shortcuts:\n" + removed : "There were no shortcuts to remove.");
+                return;
+            }
+
+            string root = AppRoot();
             if (!ServerIsUp())
             {
-                StartServer(root);
+                string node = FindNode(root);
+                try
+                {
+                    StartServer(node, root);
+                }
+                catch (Win32Exception)
+                {
+                    Fail("Claude Agents needs Node.js 18 or later, and couldn't find it. Install it from nodejs.org, or download a release of Claude Agents that includes it.");
+                    return;
+                }
                 if (!WaitForServer(TimeSpan.FromSeconds(20)))
                 {
-                    Fail("The dashboard server didn't start. Run \"npm start\" in " + root + " to see why.");
+                    Fail("The dashboard server didn't start. To see why, run this in a terminal:\n\n\"" + node + "\" \"" + Path.Combine(root, "server.js") + "\"");
                     return;
                 }
             }
@@ -49,6 +76,61 @@ static class Launcher
         {
             Fail(e.Message);
         }
+    }
+
+    // In a release, this program sits beside server.js. Built from the
+    // source, it's in launcher\, one folder down.
+    static string AppRoot()
+    {
+        string here = AppDomain.CurrentDomain.BaseDirectory;
+        if (File.Exists(Path.Combine(here, "server.js"))) return here;
+        return Path.GetFullPath(Path.Combine(here, ".."));
+    }
+
+    // The Node bundled with a release, else the Node that built this
+    // launcher, else whichever node is on the PATH.
+    static string FindNode(string root)
+    {
+        string bundled = Path.Combine(root, "node", "node.exe");
+        if (File.Exists(bundled)) return bundled;
+        string recorded = Path.Combine(root, "launcher", "node-path.txt");
+        if (File.Exists(recorded))
+        {
+            string path = File.ReadAllText(recorded).Trim();
+            if (File.Exists(path)) return path;
+        }
+        return "node";
+    }
+
+    // Creates or removes "Claude Agents" on the Desktop and in the Start menu,
+    // returning the files it changed. WScript.Shell is late-bound, so no
+    // interop assembly is needed.
+    static string[] Shortcuts(bool create)
+    {
+        string exe = Assembly.GetExecutingAssembly().Location;
+        var changed = new System.Collections.Generic.List<string>();
+        Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+        object shell = create ? Activator.CreateInstance(shellType) : null;
+        foreach (var folder in new[] { Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolder.Programs })
+        {
+            string file = Path.Combine(Environment.GetFolderPath(folder), ShortcutName);
+            if (!create)
+            {
+                if (!File.Exists(file)) continue;
+                File.Delete(file);
+                changed.Add(file);
+                continue;
+            }
+            object link = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { file });
+            Type linkType = link.GetType();
+            linkType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, link, new object[] { exe });
+            linkType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, link, new object[] { Path.GetDirectoryName(exe) });
+            linkType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, link, new object[] { exe + ",0" });
+            linkType.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "See every running Claude Code agent" });
+            linkType.InvokeMember("Save", BindingFlags.InvokeMethod, null, link, null);
+            changed.Add(file);
+        }
+        return changed.ToArray();
     }
 
     static bool ServerIsUp()
@@ -80,18 +162,9 @@ static class Launcher
         return false;
     }
 
-    // Uses the Node that ran the installer when it still exists, otherwise
-    // whichever node is on the PATH. The server stops itself once no dashboard
-    // has been open for a while.
-    static void StartServer(string root)
+    // The server stops itself once no dashboard has been open for a while.
+    static void StartServer(string node, string root)
     {
-        string node = "node";
-        string recorded = Path.Combine(root, "launcher", "node-path.txt");
-        if (File.Exists(recorded))
-        {
-            string path = File.ReadAllText(recorded).Trim();
-            if (File.Exists(path)) node = path;
-        }
         var info = new ProcessStartInfo(node, "\"" + Path.Combine(root, "server.js") + "\" --exit-when-idle")
         {
             WorkingDirectory = root,
@@ -139,5 +212,10 @@ static class Launcher
     static void Fail(string message)
     {
         MessageBox.Show(message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    }
+
+    static void Tell(string message)
+    {
+        MessageBox.Show(message, AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 }

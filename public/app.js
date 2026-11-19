@@ -9,6 +9,9 @@ const STATUS = {
   idle: { label: 'Idle', group: 'idle', rank: 3 },
   unknown: { label: 'Starting', group: 'idle', rank: 4 },
 };
+// Filters that cover more than one status group. Todo is every agent whose
+// turn it is, and the to-do cards too.
+const FILTER_GROUPS = { todo: ['needs', 'idle'] };
 const PERMISSION_MODES = {
   bypassPermissions: 'bypass',
   acceptEdits: 'accept edits',
@@ -160,25 +163,49 @@ async function catchUp(a, button) {
 
 // ---- card ------------------------------------------------------------------
 
+// Text cut to two lines that a click expands. `id` remembers it across updates.
+function expandable(id, text) {
+  return el('p', {
+    class: 'text',
+    text,
+    tabindex: '0',
+    title: 'Click to expand',
+    onclick: (e) => {
+      const box = e.currentTarget.parentElement;
+      box.classList.toggle('expanded');
+      if (box.classList.contains('expanded')) expanded.add(id);
+      else expanded.delete(id);
+    },
+    onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), e.currentTarget.click()),
+  });
+}
+
 function message(a, key, label, m, cls) {
   const id = `${a.id}:${key}`;
   return el(
     'div',
     { class: `msg ${cls || ''}${expanded.has(id) ? ' expanded' : ''}` },
-    el('span', { class: 'label' }, `${label} · `, since(m.at, ' ago')),
-    el('p', {
-      class: 'text',
-      text: m.text,
-      tabindex: '0',
-      title: 'Click to expand',
-      onclick: (e) => {
-        const box = e.currentTarget.parentElement;
-        box.classList.toggle('expanded');
-        if (box.classList.contains('expanded')) expanded.add(id);
-        else expanded.delete(id);
-      },
-      onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), e.currentTarget.click()),
-    }),
+    el('span', { class: 'label' }, m.at ? [`${label} · `, since(m.at, ' ago')] : label),
+    expandable(id, m.text),
+  );
+}
+
+// On a session started from a to-do: the to-do, and a way to copy it into Claude.
+function todoNote(a) {
+  const t = a.todo;
+  if (!t) return null;
+  const id = `${a.id}:todo`;
+  return el(
+    'div',
+    { class: `msg todo-text todo-msg${expanded.has(id) ? ' expanded' : ''}` },
+    el(
+      'div',
+      { class: 'todo-msg-head' },
+      el('span', { class: 'label', text: 'To-do' }),
+      el('b', { class: 'todo-msg-title', text: t.title, title: t.title }),
+      el('button', { type: 'button', class: 'link-btn', title: 'Copy the title and notes, to paste into Claude', onclick: () => copyTodo(t) }, 'Copy'),
+    ),
+    t.notes ? expandable(id, t.notes) : null,
   );
 }
 
@@ -205,7 +232,7 @@ function nowBlock(a) {
 
 function activity(a) {
   const promptAt = ms(a.lastPrompt?.at) || 0;
-  const parts = [nowBlock(a)];
+  const parts = [todoNote(a), nowBlock(a)];
   const replyFresh = a.lastReply && ms(a.lastReply.at) >= promptAt;
   const recapFresh = a.recap && ms(a.recap.at) >= Math.max(promptAt, replyFresh ? ms(a.lastReply.at) : 0);
   if (recapFresh && a.status !== 'busy') parts.push(message(a, 'recap', 'Recap', a.recap));
@@ -318,7 +345,7 @@ function actions(a) {
 function card(a) {
   const st = status(a);
   const tags = [];
-  if (a.gitBranch) tags.push(el('span', { class: 'tag', title: 'Git branch', text: `⎇ ${a.gitBranch}` }));
+  if (a.gitBranch) tags.push(el('span', { class: 'tag branch', title: 'Git branch', text: `⎇ ${a.gitBranch}` }));
   if (a.kind && a.kind !== 'interactive') tags.push(el('span', { class: 'tag', text: a.kind }));
   if (a.entrypoint && a.entrypoint !== 'cli') tags.push(el('span', { class: 'tag', text: a.entrypoint }));
   const perm = PERMISSION_MODES[a.permissionMode];
@@ -350,43 +377,223 @@ function card(a) {
     ),
     subtitle ? el('p', { class: 'title', text: subtitle }) : null,
     el('div', { class: 'where' }, el('span', { class: 'path', title: a.cwd, text: shortPath(a.cwd) }), tags),
-    activity(a),
-    stats(a),
-    subagents(a),
-    a.prs?.length
-      ? el(
-          'div',
-          { class: 'prs' },
-          a.prs.map((pr) => el('a', { href: pr.url, target: '_blank', rel: 'noopener noreferrer', text: `${pr.repo || 'PR'}#${pr.number}` })),
-        )
-      : null,
+    // The part that scrolls when every card is the same size.
+    el(
+      'div',
+      { class: 'card-body' },
+      activity(a),
+      stats(a),
+      subagents(a),
+      a.prs?.length
+        ? el(
+            'div',
+            { class: 'prs' },
+            a.prs.map((pr) => el('a', { href: pr.url, target: '_blank', rel: 'noopener noreferrer', text: `${pr.repo || 'PR'}#${pr.number}` })),
+          )
+        : null,
+    ),
     actions(a),
   );
 }
+
+// ---- to-dos --------------------------------------------------------------------
+
+// A to-do has its own card until its session starts, then it's on the
+// session's card. Card IDs get this prefix so they can't meet a session's.
+const TODO_PREFIX = 'todo:';
+let editingTodo = null;
+
+const todoText = (t) => (t.notes ? `${t.title}\n\n${t.notes}` : t.title);
+
+async function copyTodo(t) {
+  await copy(todoText(t));
+  toast('To-do copied');
+}
+
+function editTodo(t) {
+  editingTodo = t;
+  $('todo-dialog-title').textContent = t ? 'Edit to-do' : 'New to-do';
+  $('todo-save').textContent = t ? 'Save' : 'Add to-do';
+  $('todo-title').value = t?.title || '';
+  $('todo-notes').value = t?.notes || '';
+  $('todo-dialog').showModal();
+  $('todo-title').focus();
+}
+
+async function startTodo(t, button) {
+  if (!t.cwd) return chooseTodoFolder(t, true, button);
+  if (button) button.disabled = true;
+  try {
+    await api(`/api/todos/${t.id}/start`);
+    toast(`Starting Claude in ${shortPath(t.cwd)}`);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+  refresh();
+}
+
+// From the repo menu or Windows' folder picker, as Settings says. With
+// `start`, Claude starts there once it's chosen.
+async function chooseTodoFolder(t, start, button) {
+  if (serverSettings?.todoFolderSource !== 'picker') {
+    openRepoPicker(t, start);
+    return;
+  }
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Choosing…';
+  try {
+    const r = await api(`/api/todos/${t.id}/folder`, { pick: true });
+    if (r.cancelled) return;
+    if (start) await startTodo({ ...t, cwd: r.cwd });
+    else refresh();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+
+// Asks for a second click, so one stray click can't lose the notes.
+async function deleteTodo(t, button) {
+  if (!button.classList.contains('btn-danger')) {
+    button.classList.add('btn-danger');
+    button.textContent = 'Delete?';
+    setTimeout(() => {
+      button.classList.remove('btn-danger');
+      button.textContent = 'Delete';
+    }, 3000);
+    return;
+  }
+  button.disabled = true;
+  try {
+    await api(`/api/todos/${t.id}/delete`);
+    refresh();
+  } catch (err) {
+    toast(err.message, true);
+    button.disabled = false;
+  }
+}
+
+function todoCard(t) {
+  const btn = (label, onclick, cls = '', props = {}) => el('button', { type: 'button', class: `btn ${cls}`, onclick, ...props }, label);
+  const win = snap?.platform === 'win32';
+  // Started, but no session with its ID has turned up.
+  const stalled = t.startedAt && !t.starting;
+  return el(
+    'article',
+    { class: 'card todo-card', 'data-id': TODO_PREFIX + t.id },
+    el(
+      'div',
+      { class: 'card-head' },
+      el('span', { class: `badge s-todo${t.starting ? ' starting' : ''}` }, el('span', { class: 'dot' }), t.starting ? 'Starting' : 'To-do'),
+      since(t.starting ? t.startedAt : t.createdAt),
+    ),
+    el('h2', { class: 'name', text: t.title }),
+    el(
+      'div',
+      { class: 'where' },
+      t.cwd ? el('span', { class: 'path', title: t.cwd, text: shortPath(t.cwd) }) : el('span', { class: 'no-folder', text: 'No folder chosen yet' }),
+    ),
+    el(
+      'div',
+      { class: 'card-body' },
+      el(
+        'div',
+        { class: 'activity' },
+        t.starting
+          ? el('div', { class: 'now' }, el('div', { class: 'now-row' }, el('span', { class: 'what', text: 'Opening Claude' }), el('span', { class: 'detail', text: 'in a new Windows Terminal tab' })))
+          : null,
+        stalled
+          ? el(
+              'div',
+              { class: 'now waiting' },
+              el('div', { class: 'now-row' }, el('span', { class: 'what', text: 'No session yet' }), el('span', { class: 'detail', text: 'Check its terminal tab, or start it again' })),
+            )
+          : null,
+        t.notes ? message({ id: TODO_PREFIX + t.id }, 'notes', 'Notes', { text: t.notes }, 'todo-text') : null,
+      ),
+    ),
+    el(
+      'div',
+      { class: 'actions' },
+      win
+        ? btn(stalled ? 'Start again' : 'Start', (e) => startTodo(t, e.currentTarget), 'btn-primary', {
+            disabled: t.starting,
+            title: t.cwd ? `Open a Windows Terminal tab in ${shortPath(t.cwd)} running Claude` : 'Choose a folder, then start Claude there',
+          })
+        : null,
+      win ? btn(t.cwd ? 'Change folder' : 'Choose folder', (e) => chooseTodoFolder(t, false, e.currentTarget), '', { disabled: t.starting }) : null,
+      btn('Copy', () => copyTodo(t), '', { title: 'Copy the title and notes, to paste into Claude' }),
+      btn('Edit', () => editTodo(t)),
+      btn('Delete', (e) => deleteTodo(t, e.currentTarget), 'btn-stop'),
+    ),
+  );
+}
+
+$('todo-new').addEventListener('click', () => editTodo(null));
+$('todo-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const save = $('todo-save');
+  save.disabled = true;
+  try {
+    const body = { title: $('todo-title').value, notes: $('todo-notes').value };
+    await api(editingTodo ? `/api/todos/${editingTodo.id}` : '/api/todos', body);
+    $('todo-dialog').close();
+    refresh();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    save.disabled = false;
+  }
+});
+// Ctrl+Enter saves from the notes, where Enter is a new line.
+$('todo-notes').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    $('todo-form').requestSubmit();
+  }
+});
+for (const id of ['todo-cancel', 'todo-close']) $(id).addEventListener('click', () => $('todo-dialog').close());
 
 // ---- page ------------------------------------------------------------------
 
 function render() {
   if (!snap) return;
   const agents = [...snap.agents].sort((x, y) => status(x).rank - status(y).rank || x.startedAt - y.startedAt);
-  const counts = { all: agents.length, needs: 0, working: 0, idle: 0 };
+  const todos = [...(snap.todos || [])].sort((x, y) => x.createdAt - y.createdAt);
+  const counts = { all: agents.length + todos.length, todo: 0, needs: 0, working: 0, idle: 0 };
   for (const a of agents) counts[status(a).group]++;
+  counts.todo = counts.needs + counts.idle + todos.length;
   for (const [k, v] of Object.entries(counts)) $(`n-${k}`).textContent = v;
-  document.querySelector('[data-filter="needs"]').classList.toggle('has', counts.needs > 0);
+  for (const k of ['todo', 'needs']) document.querySelector(`[data-filter="${k}"]`).classList.toggle('has', counts.needs > 0);
   document.title = counts.needs ? `(${counts.needs}) Claude Agents` : 'Claude Agents';
   $('host').textContent = snap.host;
 
-  const shown = agents.filter((a) => filter === 'all' || status(a).group === filter);
+  const groups = FILTER_GROUPS[filter] || [filter];
+  // To-do cards come first, under All and Todo.
+  const shown = [
+    ...(filter === 'all' || filter === 'todo' ? todos.map((t) => [TODO_PREFIX + t.id, t, todoCard]) : []),
+    ...agents.filter((a) => filter === 'all' || groups.includes(status(a).group)).map((a) => [a.id, a, card]),
+  ];
   const seen = new Set();
-  shown.forEach((a, i) => {
-    seen.add(a.id);
-    const key = JSON.stringify(a) + subsOpen.get(a.id);
-    let entry = cards.get(a.id);
+  shown.forEach(([id, data, make], i) => {
+    seen.add(id);
+    const key = JSON.stringify(data) + subsOpen.get(id);
+    let entry = cards.get(id);
     if (!entry || entry.key !== key) {
-      const node = card(a);
-      if (entry) entry.node.replaceWith(node);
+      const node = make(data);
+      if (entry) {
+        // Keep the card where it was scrolled to, so updates don't jump it.
+        const scrolled = entry.node.querySelector('.card-body').scrollTop;
+        entry.node.replaceWith(node);
+        node.querySelector('.card-body').scrollTop = scrolled;
+      }
       entry = { key, node };
-      cards.set(a.id, entry);
+      cards.set(id, entry);
     }
     if (list.children[i] !== entry.node) list.insertBefore(entry.node, list.children[i] || null);
   });
@@ -396,8 +603,8 @@ function render() {
       cards.delete(id);
     }
   }
-  $('empty').hidden = agents.length > 0;
-  if (!agents.length) $('empty').querySelector('.empty-title').textContent = 'No Claude Code sessions are running.';
+  $('empty').hidden = agents.length + todos.length > 0;
+  if (!agents.length && !todos.length) $('empty').querySelector('.empty-title').textContent = 'No Claude Code sessions are running.';
   else if (!shown.length) {
     $('empty').hidden = false;
     $('empty').querySelector('.empty-title').textContent = 'No sessions match this filter.';
@@ -513,6 +720,96 @@ function announce({ needs, done }) {
   ding(needs.length ? 'needs' : 'done');
 }
 
+// ---- notification list --------------------------------------------------------
+
+// Each "needs you" or "finished" also goes in a list, so it can still be seen
+// after its toast fades. The setting under Notifications keeps it in this
+// browser across reloads.
+const NOTES_KEY = 'claude-agents:notifications';
+const KEEP_NOTES_KEY = 'claude-agents:keep-notifications';
+let keepNotes = true;
+let notes = [];
+let notesKey = null;
+try {
+  keepNotes = localStorage.getItem(KEEP_NOTES_KEY) !== 'off';
+  const saved = keepNotes && JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+  if (Array.isArray(saved)) notes = saved;
+} catch {}
+
+function saveNotes() {
+  try {
+    if (keepNotes) localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    else localStorage.removeItem(NOTES_KEY);
+  } catch {}
+}
+
+// An agent that's working again has been dealt with, and so has a question
+// it's no longer waiting on. Each agent keeps only its latest entry.
+function updateNotes(agents, { needs, done }) {
+  const live = new Map(agents.map((a) => [a.id, a]));
+  const before = notes.length;
+  notes = notes.filter((n) => {
+    const a = live.get(n.id);
+    return !a || (a.status !== 'busy' && (n.kind !== 'needs' || a.status === 'waiting'));
+  });
+  const added = [
+    ...needs.map((a) => ({ id: a.id, kind: 'needs', name: displayName(a), detail: a.waitingFor || '', at: snap.now })),
+    ...done.map((a) => ({ id: a.id, kind: 'done', name: displayName(a), detail: '', at: snap.now })),
+  ];
+  if (added.length) notes = [...added, ...notes.filter((n) => !added.some((x) => x.id === n.id))];
+  if (added.length || notes.length !== before) saveNotes();
+  renderNotes();
+}
+
+function clearNotes(note) {
+  notes = note ? notes.filter((n) => n !== note) : [];
+  saveNotes();
+  renderNotes();
+}
+
+function renderNotes() {
+  const live = new Map((snap?.agents || []).map((a) => [a.id, a]));
+  const rows = notes.map((n) => {
+    const a = live.get(n.id);
+    return { n, a, name: a ? displayName(a) : n.name, focus: Boolean(a && canFocus(a)) };
+  });
+  // Rebuilt only when something shown changes, so an open list doesn't flicker.
+  const key = JSON.stringify(rows.map((r) => [r.n.id, r.n.kind, r.n.at, r.name, Boolean(r.a), r.focus]));
+  if (key === notesKey) return;
+  notesKey = key;
+  $('notes-list').replaceChildren(
+    ...rows.map(({ n, a, name, focus }) => {
+      const what = [n.kind === 'needs' ? `Needs you${n.detail ? `: ${n.detail}` : ''}` : 'Finished'];
+      if (!a) what.push('session closed');
+      return el(
+        'li',
+        { class: `note k-${n.kind}` },
+        el('span', { class: 'dot' }),
+        el(
+          'span',
+          { class: 'note-text' },
+          focus
+            ? el('button', { type: 'button', class: 'name-link note-name', title: 'Go to this session’s window', onclick: (e) => goToWindow(a, e.currentTarget) }, name)
+            : el('span', { class: 'note-name', text: name }),
+          el('span', { class: 'note-what', text: what.join(' · '), title: what.join(' · ') }),
+        ),
+        since(n.at, ' ago'),
+        el('button', { type: 'button', class: 'icon-btn note-clear', title: 'Clear', 'aria-label': `Clear ${name}`, onclick: () => clearNotes(n) }, '✕'),
+      );
+    }),
+  );
+  $('notes-empty').hidden = notes.length > 0;
+  $('notes-clear').hidden = !notes.length;
+  $('n-notes').textContent = notes.length || '';
+  const needCount = notes.filter((n) => n.kind === 'needs').length;
+  $('notes-button').classList.toggle('has-needs', needCount > 0);
+  $('notes-button').title = notes.length
+    ? `${notes.length} notification${notes.length === 1 ? '' : 's'}${needCount ? `, ${needCount} needing you` : ''}`
+    : 'Notifications';
+}
+
+$('notes-clear').addEventListener('click', () => clearNotes());
+
 function apply(next) {
   snap = next;
   clockSkew = snap.now - Date.now();
@@ -522,6 +819,7 @@ function apply(next) {
   const changes = notableChanges(snap.agents);
   render();
   announce(changes);
+  updateNotes(snap.agents, changes);
 }
 
 function disconnected() {
@@ -609,7 +907,13 @@ function repoItem(node, terms) {
     {},
     el(
       'button',
-      { type: 'button', class: 'repo', title: `Open Claude in ${node.path}`, onclick: (e) => openRepo(node, e.currentTarget) },
+      {
+        type: 'button',
+        class: 'repo',
+        'data-path': node.path,
+        title: repoPick ? `Use ${node.path}` : `Open Claude in ${node.path}`,
+        onclick: (e) => (repoPick ? pickRepo(node, e.currentTarget) : openRepo(node, e.currentTarget)),
+      },
       el('span', { class: 'repo-name', text: node.name }),
       live
         ? el('span', { class: 'repo-live', title: `${live} Claude session${live === 1 ? '' : 's'} running here` }, el('span', { class: 'dot' }), String(live))
@@ -627,6 +931,7 @@ function folderItem(node, terms) {
     el(
       'details',
       {
+        'data-path': node.path,
         // While filtering, every folder with a match is open.
         open: terms.length > 0 || openFolders.has(node.path),
         ontoggle: (e) => {
@@ -665,9 +970,13 @@ async function loadRepos(refresh) {
     const res = await fetch(`/api/repos${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Couldn't list repos (HTTP ${res.status})`);
     repoData = await res.json();
-    $('repos-root').textContent = `${shortPath(repoData.root)} · ${repoData.count} repos`;
+    const excluded = repoData.excluded ? ` · ${repoData.excluded} hidden` : '';
+    $('repos-root').textContent = `${shortPath(repoData.root)} · ${repoData.count} repos${excluded}`;
+    $('repos-root').title = excluded ? 'Change what is hidden in Settings' : '';
     $('repos-command').textContent = repoData.command;
     renderRepos();
+    renderExcluded();
+    renderServerSettings();
   } catch (err) {
     toast(err.message, true);
   }
@@ -685,6 +994,63 @@ async function openRepo(node, button) {
     button.disabled = false;
   }
 }
+
+// The menu also chooses a to-do's folder. While it does, clicking a repo
+// picks it rather than opening Claude there.
+let repoPick = null;
+
+function openRepoPicker(todo, start) {
+  repoPick = { todo, start };
+  $('repos-title').textContent = 'Choose a folder';
+  $('repos-foot').hidden = true;
+  $('repos-pick-foot').hidden = false;
+  $('repos-pick-foot').textContent = start ? `Click a repo to start “${todo.title}” there.` : `Click a repo to use it for “${todo.title}”.`;
+  $('repos-filter').value = '';
+  $('repos').showModal();
+  $('repos-filter').focus();
+  renderRepos();
+  loadRepos(false).then(showStartFolder);
+}
+
+// Opens the folder Settings says to start in, and scrolls to it.
+function showStartFolder() {
+  const start = serverSettings?.todoStartFolder;
+  if (!repoPick || !start || !repoData) return;
+  const norm = (p) => p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase();
+  const root = norm(repoData.root);
+  if (!norm(start).startsWith(`${root}/`)) return;
+  const rel = norm(start).slice(root.length + 1);
+  const node = repoNodes(repoData.tree).find((n) => n.path.toLowerCase() === rel);
+  if (!node) return;
+  const parts = node.path.split('/');
+  for (let i = 1; i <= parts.length; i++) openFolders.add(parts.slice(0, i).join('/'));
+  saveOpenFolders();
+  renderRepos();
+  $('repos-tree').querySelector(`[data-path="${CSS.escape(node.path)}"]`)?.scrollIntoView({ block: 'start' });
+}
+
+async function pickRepo(node, button) {
+  const { todo, start } = repoPick;
+  button.disabled = true;
+  try {
+    const r = await api(`/api/todos/${todo.id}/folder`, { repo: node.path });
+    $('repos').close();
+    if (start) await startTodo({ ...todo, cwd: r.cwd });
+    else refresh();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+$('repos').addEventListener('close', () => {
+  if (!repoPick) return;
+  repoPick = null;
+  $('repos-title').textContent = 'Repositories';
+  $('repos-foot').hidden = false;
+  $('repos-pick-foot').hidden = true;
+});
 
 $('menu-button').addEventListener('click', () => {
   $('repos').showModal();
@@ -707,6 +1073,421 @@ if (repoLink) {
   $('repos-filter').value = decodeURIComponent(repoLink[1] || '');
   $('menu-button').click();
 }
+
+// ---- history -------------------------------------------------------------------
+
+// Closed sessions, newest first, as the server recorded them or read them back
+// from their transcripts.
+let historyData = null;
+
+// A session read back from its transcript has no terminal title or session
+// name, so it falls back to its title or first prompt.
+const pastName = (s) => s.terminalTitle || s.title || s.firstPrompt?.text || s.name || shortPath(s.cwd);
+
+function dayLabel(t) {
+  const d = new Date(t);
+  const midnight = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((midnight(new Date(now())) - midnight(d)) / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+async function resumePast(s, button) {
+  button.disabled = true;
+  try {
+    await api(`/api/history/${s.id}/resume`);
+    $('history').close();
+    toast(`Resuming ${pastName(s)}`);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function pastItem(s) {
+  const name = pastName(s);
+  const subtitle = s.title && s.title !== name ? s.title : null;
+  const meta = [];
+  if (s.prompts) meta.push(`${s.prompts} prompt${s.prompts === 1 ? '' : 's'}`);
+  if (s.model) meta.push(modelLabel(s));
+  return el(
+    'li',
+    { class: 'past' },
+    el('div', { class: 'past-head' }, el('span', { class: 'past-name', text: name, title: name }), since(s.closedAt, ' ago')),
+    subtitle ? el('p', { class: 'past-title', text: subtitle, title: subtitle }) : null,
+    s.todo ? el('p', { class: 'past-title', title: todoText(s.todo) }, el('b', {}, 'To-do · '), s.todo.title) : null,
+    el(
+      'div',
+      { class: 'where' },
+      el('span', { class: 'path', text: shortPath(s.cwd), title: s.cwd }),
+      s.gitBranch ? el('span', { class: 'tag branch', title: 'Git branch', text: `⎇ ${s.gitBranch}` }) : null,
+    ),
+    s.lastPrompt ? el('p', { class: 'past-prompt', title: s.lastPrompt.text }, el('b', {}, 'Last prompt · '), s.lastPrompt.text) : null,
+    el(
+      'div',
+      { class: 'past-actions' },
+      snap?.platform === 'win32'
+        ? el('button', { type: 'button', class: 'btn btn-primary', title: 'Open a terminal tab in its folder and continue the conversation', onclick: (e) => resumePast(s, e.currentTarget) }, 'Resume')
+        : null,
+      el(
+        'button',
+        {
+          type: 'button',
+          class: 'btn',
+          onclick: async () => {
+            await copy(resumeCommand(s));
+            toast('Resume command copied');
+          },
+        },
+        'Copy resume command',
+      ),
+      meta.length ? el('span', { class: 'past-meta', text: meta.join(' · ') }) : null,
+    ),
+  );
+}
+
+// Every word must appear somewhere in the session's names, folder, branch or prompts.
+function renderHistory() {
+  if (!historyData) return;
+  const terms = $('history-filter').value.toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = historyData.filter((s) => {
+    const text = [pastName(s), s.title, s.name, s.cwd, s.gitBranch, s.firstPrompt?.text, s.lastPrompt?.text, s.todo?.title, s.todo?.notes]
+      .join(' ')
+      .toLowerCase();
+    return terms.every((t) => text.includes(t));
+  });
+  const n = historyData.length;
+  $('history-sub').textContent = `${n} closed session${n === 1 ? '' : 's'}${terms.length ? ` · ${shown.length} shown` : ''}`;
+  const days = [];
+  for (const s of shown) {
+    const day = dayLabel(s.closedAt);
+    if (days.at(-1)?.day !== day) days.push({ day, sessions: [] });
+    days.at(-1).sessions.push(s);
+  }
+  $('history-list').replaceChildren(
+    ...(days.length
+      ? days.flatMap((d) => [el('h3', { class: 'history-day', text: d.day }), el('ul', {}, d.sessions.map(pastItem))])
+      : [el('p', { class: 'tree-empty', text: n ? 'No closed sessions match.' : 'No sessions have closed in the last 30 days.' })]),
+  );
+}
+
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/history', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Couldn't load the history (HTTP ${res.status})`);
+    historyData = (await res.json()).sessions;
+    renderHistory();
+  } catch (err) {
+    $('history-sub').textContent = err.message;
+  }
+}
+
+$('history-button').addEventListener('click', () => {
+  $('history').showModal();
+  $('history-filter').focus();
+  loadHistory();
+});
+$('history-close').addEventListener('click', () => $('history').close());
+$('history-filter').addEventListener('input', renderHistory);
+$('history').addEventListener('click', (e) => e.target === e.currentTarget && e.currentTarget.close());
+
+// ---- settings ----------------------------------------------------------------
+
+// A group of radio buttons saved in this browser as claude-agents:<name>. The
+// first value is the default. `apply` runs now and on every change.
+function radioSetting(name, values, apply) {
+  const key = `claude-agents:${name}`;
+  const radios = document.querySelectorAll(`input[name="${name}"]`);
+  let value = values[0];
+  try {
+    const saved = localStorage.getItem(key);
+    if (values.includes(saved)) value = saved;
+  } catch {}
+  const update = () => {
+    for (const r of radios) r.checked = r.value === value;
+    apply(value);
+  };
+  for (const r of radios) {
+    r.addEventListener('change', () => {
+      value = r.value;
+      try {
+        localStorage.setItem(key, value);
+      } catch {}
+      update();
+    });
+  }
+  update();
+}
+
+// System follows Windows' light or dark mode; Light and Dark override it.
+radioSetting('theme', ['system', 'light', 'dark'], (theme) => {
+  if (theme === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+});
+
+// Fit lets each card grow to its content; the others make every card the same size.
+radioSetting('card-size', ['fit', 'small', 'medium', 'large'], (size) => {
+  list.dataset.size = size;
+  list.classList.toggle('uniform', size !== 'fit');
+});
+
+// Folders and repos left out of the repo menu. The server keeps these, for
+// every browser, as paths under the repos folder with forward slashes.
+let serverSettings = null;
+
+const repoSep = () => (repoData?.root.includes('\\') ? '\\' : '/');
+const showRepoPath = (p) => p.replace(/\//g, repoSep());
+
+// Every folder and repo in a tree.
+function repoNodes(nodes, out = []) {
+  for (const n of nodes) {
+    out.push(n);
+    if (n.children) repoNodes(n.children, out);
+  }
+  return out;
+}
+
+// Folders opened in this tree. Until the first render, every folder above a
+// hidden one opens, so what's hidden is in view.
+let excludedOpen = null;
+
+const excludedSet = () => new Set((serverSettings?.excludedFolders || []).map((p) => p.toLowerCase()));
+const excludedFilter = () => $('excluded-filter').value.toLowerCase().split(/\s+/).filter(Boolean);
+
+// How many repos are in this folder, and how many of them are hidden.
+function repoTally(node, excluded, hidden = false) {
+  hidden ||= excluded.has(node.path.toLowerCase());
+  if (node.repo) return { total: 1, hidden: hidden ? 1 : 0 };
+  const tally = { total: 0, hidden: 0 };
+  for (const c of node.children) {
+    const t = repoTally(c, excluded, hidden);
+    tally.total += t.total;
+    tally.hidden += t.hidden;
+  }
+  return tally;
+}
+
+function setExcluded(node, show) {
+  const list = (serverSettings?.excludedFolders || []).filter((p) => p.toLowerCase() !== node.path.toLowerCase());
+  saveExcluded(show ? list : [...list, node.path]);
+}
+
+// A tick box for one folder or repo. Inside a hidden folder it's unticked and
+// disabled, though the folder or repo keeps its own setting for when the
+// folder is shown again.
+function excludedBox(node, excluded, hiddenBy) {
+  const label = showRepoPath(node.path);
+  return el('input', {
+    type: 'checkbox',
+    'data-path': node.path,
+    checked: !hiddenBy && !excluded.has(node.path.toLowerCase()),
+    disabled: !!hiddenBy,
+    title: hiddenBy ? `Hidden along with ${showRepoPath(hiddenBy)}` : null,
+    'aria-label': `Show ${label} in the repo menu`,
+    onchange: (e) => setExcluded(node, e.currentTarget.checked),
+  });
+}
+
+// Filtering works like the menu's. A folder that matches by itself lists
+// everything inside it.
+function excludedItem(node, terms, excluded, hiddenBy) {
+  const matches = terms.length > 0 && repoMatches(node, terms);
+  if (node.repo) {
+    if (terms.length && !matches) return null;
+    return el(
+      'li',
+      {},
+      el('label', { class: 'excluded-repo' }, excludedBox(node, excluded, hiddenBy), el('span', { class: 'repo-name', text: node.name })),
+    );
+  }
+  const off = hiddenBy || (excluded.has(node.path.toLowerCase()) ? node.path : null);
+  const list = excludedList(node.children, matches ? [] : terms, excluded, off);
+  if (!list) return null;
+  const { total, hidden } = repoTally(node, excluded);
+  const count = !hidden ? String(total) : hidden === total ? `${total} hidden` : `${hidden} of ${total} hidden`;
+  // The filter opens folders with matches inside; those aren't remembered.
+  const auto = terms.length > 0 && !matches;
+  return el(
+    'li',
+    {},
+    el(
+      'details',
+      {
+        open: auto || excludedOpen.has(node.path),
+        ontoggle: (e) => {
+          if (auto) return;
+          if (e.currentTarget.open) excludedOpen.add(node.path);
+          else excludedOpen.delete(node.path);
+        },
+      },
+      el(
+        'summary',
+        {},
+        el('span', { class: 'chev' }),
+        excludedBox(node, excluded, hiddenBy),
+        el('span', { class: 'folder-name', text: node.name }),
+        el('span', { class: `folder-count${hidden && hidden < total ? ' some' : ''}`, text: count }),
+      ),
+      list,
+    ),
+  );
+}
+
+function excludedList(nodes, terms, excluded, hiddenBy) {
+  const items = nodes.map((n) => excludedItem(n, terms, excluded, hiddenBy)).filter(Boolean);
+  return items.length ? el('ul', {}, items) : null;
+}
+
+function renderExcluded() {
+  const tree = $('excluded-tree');
+  if (!repoData?.all || !serverSettings) {
+    tree.replaceChildren(el('p', { class: 'tree-empty', text: 'Loading…' }));
+    return;
+  }
+  const excluded = excludedSet();
+  if (!excludedOpen) {
+    // Hidden paths match in any case; the tree needs each folder's path as found.
+    const byLower = new Map(repoNodes(repoData.all).map((n) => [n.path.toLowerCase(), n.path]));
+    excludedOpen = new Set();
+    for (const p of excluded) {
+      const parts = p.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        const found = byLower.get(parts.slice(0, i).join('/'));
+        if (found) excludedOpen.add(found);
+      }
+    }
+  }
+  // Rebuilding the tree would lose focus from the box just clicked.
+  const focused = tree.contains(document.activeElement) ? document.activeElement.dataset.path : null;
+  const terms = excludedFilter();
+  tree.replaceChildren(
+    excludedList(repoData.all, terms, excluded, null) ||
+      el('p', { class: 'tree-empty', text: terms.length ? 'No folders or repos match.' : 'No git repos found.' }),
+  );
+  if (focused) tree.querySelector(`input[data-path="${CSS.escape(focused)}"]`)?.focus();
+
+  // Hidden paths that the scan no longer finds can still be removed.
+  const found = new Set(repoNodes(repoData.all).map((n) => n.path.toLowerCase()));
+  const missing = (serverSettings.excludedFolders || []).filter((p) => !found.has(p.toLowerCase()));
+  $('excluded-missing').hidden = !missing.length;
+  $('excluded-list').replaceChildren(
+    ...missing.map((p) =>
+      el(
+        'li',
+        {},
+        el('span', { class: 'excluded-path', text: showRepoPath(p), title: showRepoPath(p) }),
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'icon-btn',
+            title: 'Stop hiding it',
+            'aria-label': `Stop hiding ${showRepoPath(p)}`,
+            onclick: () => setExcluded({ path: p }, true),
+          },
+          '✕',
+        ),
+      ),
+    ),
+  );
+}
+
+async function loadServerSettings() {
+  try {
+    const res = await fetch('/api/settings', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Couldn't load settings (HTTP ${res.status})`);
+    serverSettings = (await res.json()).settings;
+    renderExcluded();
+    renderServerSettings();
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+// The settings kept on the server, other than the repo menu's. The to-do
+// folder box isn't changed under someone typing in it.
+function renderServerSettings() {
+  $('skip-permissions').checked = Boolean(serverSettings?.skipPermissions);
+  const source = serverSettings?.todoFolderSource || 'repos';
+  for (const r of document.querySelectorAll('input[name="todo-source"]')) r.checked = r.value === source;
+  const input = $('todo-start');
+  if (repoData) input.placeholder = shortPath(repoData.root);
+  if (document.activeElement !== input) input.value = shortPath(serverSettings?.todoStartFolder || '');
+}
+
+async function saveServerSetting(changes) {
+  try {
+    serverSettings = (await api('/api/settings', changes)).settings;
+    if ('todoStartFolder' in changes) $('todo-start').value = shortPath(serverSettings.todoStartFolder);
+    renderServerSettings();
+    return true;
+  } catch (err) {
+    toast(err.message, true);
+    renderServerSettings();
+    return false;
+  }
+}
+
+$('skip-permissions').addEventListener('change', (e) => saveServerSetting({ skipPermissions: e.currentTarget.checked }));
+for (const r of document.querySelectorAll('input[name="todo-source"]')) {
+  r.addEventListener('change', () => saveServerSetting({ todoFolderSource: r.value }));
+}
+$('todo-start').addEventListener('change', (e) => saveServerSetting({ todoStartFolder: e.currentTarget.value }));
+$('todo-start').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  // Enter would otherwise submit the dialog's form, which closes it.
+  e.preventDefault();
+  saveServerSetting({ todoStartFolder: e.currentTarget.value });
+});
+
+// The tree changes at once and the saves go out one at a time, in order. Only
+// the latest save's reply is shown, so quick clicks don't flicker back.
+let excludedSaving = Promise.resolve();
+let excludedSaves = 0;
+
+function saveExcluded(list) {
+  const n = ++excludedSaves;
+  serverSettings = { ...serverSettings, excludedFolders: list };
+  renderExcluded();
+  excludedSaving = excludedSaving.then(async () => {
+    try {
+      const saved = (await api('/api/settings', { excludedFolders: list })).settings;
+      if (n === excludedSaves) serverSettings = saved;
+    } catch (err) {
+      toast(err.message, true);
+      if (n === excludedSaves) await loadServerSettings();
+    }
+    if (n === excludedSaves) await loadRepos(false);
+  });
+}
+
+$('excluded-filter').addEventListener('input', renderExcluded);
+$('excluded-filter').addEventListener('keydown', (e) => {
+  // Enter would otherwise submit the dialog's form, which closes it.
+  if (e.key === 'Enter') e.preventDefault();
+});
+
+$('keep-notes').checked = keepNotes;
+$('keep-notes').addEventListener('change', (e) => {
+  keepNotes = e.currentTarget.checked;
+  try {
+    localStorage.setItem(KEEP_NOTES_KEY, keepNotes ? 'on' : 'off');
+  } catch {}
+  saveNotes();
+});
+
+$('settings-button').addEventListener('click', () => {
+  $('settings').showModal();
+  $('settings').querySelector('input:checked').focus();
+  loadServerSettings();
+  loadRepos(false);
+});
+$('settings').addEventListener('click', (e) => e.target === e.currentTarget && e.currentTarget.close());
+renderNotes();
+// Starting a to-do needs the folder setting before Settings is ever opened.
+loadServerSettings();
 
 for (const b of document.querySelectorAll('[data-filter]')) {
   b.addEventListener('click', () => {

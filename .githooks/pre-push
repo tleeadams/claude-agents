@@ -1,0 +1,6 @@
+#!/bin/sh
+# Checks pushes against the branch rules in scripts/gitflow.js.
+# Turned on by `npm run setup`. GitHub enforces the same rules on pull
+# requests, so without Node this hook steps aside rather than block.
+command -v node >/dev/null 2>&1 || exit 0
+exec node "$(git rev-parse --show-toplevel)/scripts/gitflow.js" pre-push "$@"
