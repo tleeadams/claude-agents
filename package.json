@@ -1,6 +1,6 @@
 {
   "name": "claude-agents",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Local dashboard showing every running Claude Code session and its live status",
   "private": true,
   "main": "server.js",
@@ -11,11 +11,15 @@
     "start": "node server.js --open",
     "serve": "node server.js",
     "check": "node server.js --once",
+    "setup": "node scripts/gitflow.js setup",
+    "setup-github": "node scripts/gitflow.js github",
+    "test": "node --test",
+    "build": "node scripts/build-release.js",
     "install-shortcut": "node scripts/install-shortcut.js",
     "uninstall-shortcut": "node scripts/install-shortcut.js --uninstall"
   },
   "engines": {
     "node": ">=18"
   },
-  "license": "UNLICENSED"
+  "license": "GPL-3.0-or-later"
 }
