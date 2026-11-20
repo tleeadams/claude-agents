@@ -31,12 +31,16 @@ jobs:
           echo "Processes above this step:"
           p=$$; while [ "$p" -gt 1 ]; do ps -o pid=,ppid=,comm= -p "$p"; p=$(ps -o ppid= -p "$p" | tr -d ' '); done
           db="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
-          for client in /usr/bin/osascript /bin/bash /bin/sh "$(command -v node)" $(ps -A -o comm= | grep -E 'Runner\.(Worker|Listener)$' | sort -u); do
+          for client in /usr/bin/osascript /bin/bash /bin/sh "$(command -v node)" /opt/hca/hosted-compute-agent $(ps -A -o comm= | grep -E 'Runner\.(Worker|Listener)$' | sort -u); do
             for target in com.apple.Terminal com.apple.systemevents; do
               sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAppleEvents', '$client', 1, 2, 3, 1, 0, '$target', 0, CAST(strftime('%s','now') AS INTEGER));" \
                 && echo "allowed $client -> $target" || echo "couldn't allow $client -> $target"
             done
           done
+          # The privacy service reads the rows again when it restarts.
+          killall tccd 2>/dev/null || true
+          open -a Terminal
+          sleep 8
       - name: Check Terminal and tmux
         run: |
           brew list tmux >/dev/null 2>&1 || brew install tmux >/dev/null
@@ -48,4 +52,4 @@ jobs:
           fi
       - name: What macOS's privacy checks said
         if: failure()
-        run: log show --last 15m --predicate 'subsystem == "com.apple.TCC"' --style compact 2>/dev/null | grep -iE 'AppleEvents|responsible|attribution' | tail -40
+        run: log show --last 15m --predicate 'subsystem == "com.apple.TCC"' --style compact 2>/dev/null | grep -iE 'osascript|com\.apple\.Terminal|AppleEvents' | tail -30
