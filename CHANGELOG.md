@@ -9,6 +9,7 @@ Notable changes in each release. Version numbers follow [Semantic Versioning](ht
 - **Stop** on macOS and Linux ends the session's child processes too, as on Windows.
 - `npm start` opens a dashboard that's already running instead of failing, and opens it as an app window where Chrome, Edge, Brave, Chromium or Vivaldi is installed.
 - `npm run check-terminals` checks each terminal on the computer with a stand-in session, not Claude.
+- **Downloads for macOS** (Apple silicon and Intel) **and Linux** (x64 and arm64), with Node included. `tabherd` opens the dashboard; `tabherd --install` adds Tabherd to Applications on macOS or the applications menu on Linux, and a `tabherd` command. `npm run install-shortcut` does the same from the source.
 - Each release page starts by saying what Tabherd does, as SignPath Foundation asks of download pages.
 
 ## 0.2.0 - 2026-11-20

@@ -1,7 +1,8 @@
 name: Release
 
-# Pushing a version tag, such as v0.1.0, on main builds the release zips and
-# creates a draft GitHub release with them. Check the draft, then publish it.
+# Pushing a version tag, such as v0.1.0, on main builds the releases (a zip
+# for Windows, archives for macOS and Linux) and creates a draft GitHub
+# release with them. Check the draft, then publish it.
 # A tag with a hyphen (v0.2.0-beta.1) makes a prerelease.
 on:
   push:
@@ -12,10 +13,9 @@ permissions:
 
 jobs:
   build:
+    # The Windows release, built on Windows for the launcher's C# compiler.
     strategy:
       matrix:
-        # One entry per platform. Each needs a target in
-        # scripts/build-release.js first; only Windows has one so far.
         os: [windows-latest]
     runs-on: ${{ matrix.os }}
     permissions:
@@ -88,8 +88,30 @@ jobs:
             dist/*.zip.sha256
             dist/RELEASE_NOTES.md
 
+  build-unix:
+    # The macOS and Linux releases. Their launcher is a shell script and Node
+    # is downloaded for each, checked against Node's published checksums, so
+    # one Linux runner builds them all.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - name: Build the macOS and Linux releases
+        run: |
+          for target in macos-arm64 macos-x64 linux-x64 linux-arm64; do
+            node scripts/build-release.js --target "$target" --download-node
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-unix
+          path: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
+
   release:
-    needs: build
+    needs: [build, build-unix]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -113,6 +135,6 @@ jobs:
             printf '\n[Code signing policy](%s#code-signing-policy)\n' "$repo"
           } > dist/notes.md
           mv dist/notes.md dist/RELEASE_NOTES.md
-          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.zip.sha256 \
+          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.tar.gz dist/*.sha256 \
             --repo "$GITHUB_REPOSITORY" --draft $prerelease \
             --title "Tabherd $GITHUB_REF_NAME" --notes-file dist/RELEASE_NOTES.md
