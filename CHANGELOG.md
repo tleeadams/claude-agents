@@ -2,6 +2,10 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
+## Unreleased
+
+- Tabherd can be installed with Homebrew on macOS and Linux: `brew install tleeadams/tap/tabherd`.
+
 ## 0.3.0 - 2026-11-20
 
 - **macOS and Linux** can go to a session's window, catch it up, show its tab's title, and open Claude from the repo menu, Resume and to-dos, as Windows can. Supported: Terminal, iTerm2 and Ghostty on macOS; GNOME Terminal, Ptyxis and Konsole on Linux; kitty, WezTerm and tmux on both. What each terminal can do is in the README.
