@@ -6,6 +6,8 @@ Notable changes in each release. Version numbers follow [Semantic Versioning](ht
 
 - History no longer lists sessions closed before Claude was asked anything. Claude saves no conversation for them, so Resume opened a tab that closed straight away.
 - A to-do whose session closes unused comes back to its own card, ready to start again, rather than disappearing with its notes.
+- A dashboard page left open while the server restarted can change things again. It kept sending the old run's token, so every change was refused: a setting such as *Skip permission prompts* switched straight back.
+- Messages show on top of an open dialog, such as Settings, rather than hidden behind it.
 
 ## 0.1.1 - 2026-11-19
 
