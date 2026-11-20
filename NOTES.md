@@ -21,7 +21,7 @@ Not yet confirmed in real use:
 - Resume carrying on a real conversation, and bringing a to-do back onto the resumed session's card. The unit tests cover the to-do part.
 - Hearing an actual ding. The tests recorded the tones; no audio was played.
 - The theme setting, Todo filter and notification list (2026-11-19). Tested in headless Edge, where the list's clearing rules were run against simulated status changes. A real agent's change hasn't been seen to add or clear an entry yet.
-- kitty and WezTerm on macOS: their Linux code passed, but the runner's virtual machine has no OpenGL, so neither opens a window there. The owner's Mac is the check.
+- WezTerm on macOS: its Linux code passed, but the runner's virtual machine has no OpenGL, so it can't open a window there. kitty has the same limit on the runner; it passed on the owner's Mac (2026-11-20), once a typo in kitty.conf was fixed.
 - Linux: Ghostty and Ptyxis, which Ubuntu 24.04 doesn't package. KDE's KWin script for bringing a window forward on Wayland, since the test machine has no KWin.
 - Releases (2026-11-19). v0.1.1 was the Release workflow's first run. Its draft was checked before publishing: the zip matched its checksum and the tag file by file, its bundled server answered on every endpoint, and its launcher, built on GitHub, started a server. CI passes on Windows, macOS and Linux with Node 18 and 24. Downloaded through a browser, the zip got no download warning, but the launcher got SmartScreen's warning when run, as the README describes.
 
