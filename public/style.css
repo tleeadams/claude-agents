@@ -779,10 +779,13 @@ button:focus-visible, a:focus-visible, summary:focus-visible, .msg .text:focus-v
 }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
+/* A popover, so the browser's popover box styles are undone. */
 .toast {
   position: fixed;
-  left: 50%;
-  bottom: 22px;
+  inset: auto auto 22px 50%;
+  margin: 0;
+  border: 0;
+  overflow: visible;
   transform: translate(-50%, 20px);
   padding: 8px 14px;
   border-radius: 8px;
@@ -794,6 +797,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible, .msg .text:focus-v
   transition: opacity 0.18s, transform 0.18s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* Fades in from hidden each time it's opened. */
+@starting-style { .toast.show { opacity: 0; transform: translate(-50%, 20px); } }
 .toast.error { background: var(--danger); color: #fff; }
 
 @media (max-width: 640px) {

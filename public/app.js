@@ -1,6 +1,6 @@
 'use strict';
 
-const TOKEN = document.querySelector('meta[name="agents-token"]').content;
+let token = document.querySelector('meta[name="agents-token"]').content;
 
 const STATUS = {
   waiting: { label: 'Needs you', group: 'needs', rank: 0 },
@@ -97,6 +97,12 @@ function toast(message, isError) {
   const t = $('toast');
   t.textContent = message;
   t.className = `toast show${isError ? ' error' : ''}`;
+  // A popover shows above dialogs opened before it, so it's opened again for
+  // each message, in front of whichever dialog is open now.
+  if (t.showPopover) {
+    if (t.matches(':popover-open')) t.hidePopover();
+    t.showPopover();
+  }
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => (t.className = 'toast'), isError ? 5000 : 2200);
 }
@@ -114,15 +120,34 @@ async function copy(text) {
   }
 }
 
+// Each server run has its own token. A page left open while the server
+// restarted gets the new one and tries again; the server did nothing with the
+// refused request.
 async function api(url, body) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'X-Agents-Token': TOKEN, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
-  });
+  const request = () =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'X-Agents-Token': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+  let res = await request();
+  if (res.status === 403 && (await renewToken())) res = await request();
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
+}
+
+// Reads the token from a fresh copy of the page. True if it changed.
+async function renewToken() {
+  try {
+    const html = await (await fetch('/', { cache: 'no-store' })).text();
+    const fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('meta[name="agents-token"]')?.content;
+    if (!fresh || fresh === token) return false;
+    token = fresh;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const post = (agent, action) => api(`/api/agents/${agent.id}/${action}`);
