@@ -4,6 +4,11 @@ Notable changes in each release. Version numbers follow [Semantic Versioning](ht
 
 ## Unreleased
 
+- **macOS and Linux** can go to a session's window, catch it up, show its tab's title, and open Claude from the repo menu, Resume and to-dos, as Windows can. Supported: Terminal, iTerm2 and Ghostty on macOS; GNOME Terminal, Ptyxis and Konsole on Linux; kitty, WezTerm and tmux on both. What each terminal can do is in the README.
+- Settings › New sessions › **Terminal** chooses the terminal Claude opens in, where there's more than one.
+- **Stop** on macOS and Linux ends the session's child processes too, as on Windows.
+- `npm start` opens a dashboard that's already running instead of failing, and opens it as an app window where Chrome, Edge, Brave, Chromium or Vivaldi is installed.
+- `npm run check-terminals` checks each terminal on the computer with a stand-in session, not Claude.
 - Each release page starts by saying what Tabherd does, as SignPath Foundation asks of download pages.
 
 ## 0.2.0 - 2026-11-20

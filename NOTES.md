@@ -12,6 +12,7 @@ Confirmed working on Windows 11, with Windows Terminal:
 - Terminal titles, including renamed tabs once they've been viewed.
 - The launcher: it starts the server hidden, opens an Edge app window, and reuses it if it's already open.
 - Dings, in headless Edge: the right sound for each change, muting, and the click-to-enable state.
+- The Linux drivers (2026-11-20), on Ubuntu 24.04 in WSL with its desktop, through `npm run check-terminals` and a stand-in session: tmux (alone and inside kitty), kitty, WezTerm, GNOME Terminal and Konsole 23.08 open Claude's tab, go to the exact tab, take Catch up as a paste followed by Enter, and stop. GNOME Terminal can't be typed into from outside, and Konsole doesn't expose a program's title, as expected. WSL's desktop doesn't let apps bring windows forward, so raising windows wasn't checked.
 - Driven through the real server's API (2026-11-19): opening a repo from the ☰ menu (a Claude tab opened); the folder picker, which opened in front of the other windows; a to-do's Start. Claude registered the `--session-id` it was given, and the to-do moved to the session's card within 2 seconds, including on the first Start after a fresh server start. Also Stop, after which the to-do left with the session and History recorded it with the to-do. Resume opened a tab running `claude --resume` in the right folder. That test session had never been asked anything, so Claude had no conversation to resume. That's why History now leaves such sessions out, and their to-dos come back.
 
 Not yet confirmed in real use:
@@ -19,6 +20,8 @@ Not yet confirmed in real use:
 - Resume carrying on a real conversation, and bringing a to-do back onto the resumed session's card. The unit tests cover the to-do part.
 - Hearing an actual ding. The tests recorded the tones; no audio was played.
 - The theme setting, Todo filter and notification list (2026-11-19). Tested in headless Edge, where the list's clearing rules were run against simulated status changes. A real agent's change hasn't been seen to add or clear an entry yet.
+- The macOS drivers (2026-11-20): Terminal, iTerm2 and Ghostty through AppleScript, and kitty and WezTerm with `open -a`. Written from each app's scripting dictionary and source, and from tools tested against Claude Code on macOS 26; never run on a Mac yet. `npm run check-terminals` on a Mac is the first check. Uncertain: whether Terminal shows a program's title in `custom title` (otherwise only the selected tab's title is read), and whether bringing an app forward from a background process works on macOS 26.
+- Linux: Ghostty and Ptyxis, which Ubuntu 24.04 doesn't package. KDE's KWin script for bringing a window forward on Wayland, since the test machine has no KWin.
 - Releases (2026-11-19). v0.1.1 was the Release workflow's first run. Its draft was checked before publishing: the zip matched its checksum and the tag file by file, its bundled server answered on every endpoint, and its launcher, built on GitHub, started a server. CI passes on Windows, macOS and Linux with Node 18 and 24. Downloaded through a browser, the zip got no download warning, but the launcher got SmartScreen's warning when run, as the README describes.
 
 ## Public (2026-11-19)
@@ -43,7 +46,7 @@ Also applied: `develop` as the default branch, merge commits only, merged branch
 
 Still to do:
 - Code-signing the launcher, through SignPath Foundation, which signs open-source projects for free as the publisher, so no personal name goes on the certificate. The Release workflow, the policy in the README and `.signpath/artifact-configuration.xml` are ready (2026-11-20). The signing steps haven't run yet: they need the project approved, then set up as in CONTRIBUTING.md. Signing won't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads.
-- macOS and Linux need their own ways to open a terminal tab, find a window and pick a folder before they get releases.
+- macOS and Linux releases: a download with Node included and a `tabherd` command, then Homebrew and winget.
 
 ## Known limits
 
