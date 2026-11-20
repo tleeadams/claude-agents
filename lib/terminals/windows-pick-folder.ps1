@@ -18,7 +18,7 @@ try {
   # The server runs in the background, and Windows doesn't let a background
   # process put its windows in front. The dialog's owner is a topmost window,
   # invisible, brought forward with a synthetic Alt press as in
-  # focus-window.ps1, so the dialog opens in front of the dashboard.
+  # windows-focus.ps1, so the dialog opens in front of the dashboard.
   $owner = New-Object System.Windows.Forms.Form -Property @{
     TopMost = $true
     ShowInTaskbar = $false

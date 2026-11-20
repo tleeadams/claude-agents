@@ -16,7 +16,8 @@
     "test": "node --test",
     "build": "node scripts/build-release.js",
     "install-shortcut": "node scripts/install-shortcut.js",
-    "uninstall-shortcut": "node scripts/install-shortcut.js --uninstall"
+    "uninstall-shortcut": "node scripts/install-shortcut.js --uninstall",
+    "check-terminals": "node scripts/check-terminals.js"
   },
   "engines": {
     "node": ">=18"
