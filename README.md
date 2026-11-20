@@ -71,7 +71,7 @@ The filters in the header show every session, or only those in one state. **Todo
 
 The server makes up the session ID, so it knows which session the to-do turned into. Once that session appears, its card replaces the to-do's, with the to-do's title and notes at the top and **Copy** to paste them into Claude. Nothing is typed into Claude for you. If no session turns up within a minute, the to-do's card says so and offers **Start again**.
 
-When the session closes, the to-do goes too. Its title and notes stay with the session in History, and resuming the session brings the to-do back on its card. **Delete** asks for a second click. To-dos are saved in `~/.claude-agents/todos.json`.
+When the session closes, the to-do goes too. Its title and notes stay with the session in History, and resuming the session brings the to-do back on its card. A session closed before Claude was asked anything has nothing to resume, so its to-do comes back to its own card instead, with its folder, ready to start again. **Delete** asks for a second click. To-dos are saved in `~/.claude-agents/todos.json`.
 
 ## Settings
 
@@ -121,7 +121,7 @@ The server pushes each update to open dashboards (`/api/stream`, server-sent eve
 
 The clock button in the header lists sessions that have closed, newest first and grouped by day. Each entry has the session's name, folder, branch and last prompt, and a filter searches all of those. **Resume** opens a Windows Terminal tab in the session's folder running `claude --resume <id>`, so the conversation carries on where it stopped. **Copy resume command** copies a command that does the same, for running yourself.
 
-The server records a session when it drops off the dashboard, keeping its terminal tab's title and session name. Sessions that closed while the server wasn't running, or while no dashboard was open, are read from their transcripts in `~/.claude/projects`, going back 30 days. Those show Claude's title for the session, or its first prompt, rather than the tab's title. Each transcript is read once and again only if it changes, so after the first scan (about a second for 300 MB of transcripts) opening History is quick. Only interactive sessions are listed, not `claude -p` or SDK runs. A session that's running again, because it was resumed, leaves the list until it closes. The history keeps the latest 300 sessions, in `~/.claude-agents/history.json`.
+The server records a session when it drops off the dashboard, keeping its terminal tab's title and session name. Sessions that closed while the server wasn't running, or while no dashboard was open, are read from their transcripts in `~/.claude/projects`, going back 30 days. Those show Claude's title for the session, or its first prompt, rather than the tab's title. Each transcript is read once and again only if it changes, so after the first scan (about a second for 300 MB of transcripts) opening History is quick. Only interactive sessions are listed, not `claude -p` or SDK runs. Nor are sessions closed before Claude was asked anything: Claude saves no conversation for those, so there's nothing to resume. A session that's running again, because it was resumed, leaves the list until it closes. The history keeps the latest 300 sessions, in `~/.claude-agents/history.json`.
 
 ## Repo menu (Windows)
 

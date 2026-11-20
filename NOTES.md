@@ -12,19 +12,18 @@ Confirmed working on Windows 11, with Windows Terminal:
 - Terminal titles, including renamed tabs once they've been viewed.
 - The launcher: it starts the server hidden, opens an Edge app window, and reuses it if it's already open.
 - Dings, in headless Edge: the right sound for each change, muting, and the click-to-enable state.
+- Driven through the real server's API (2026-11-19): opening a repo from the ☰ menu (a Claude tab opened); the folder picker, which opened in front of the other windows; a to-do's Start. Claude registered the `--session-id` it was given, and the to-do moved to the session's card within 2 seconds, including on the first Start after a fresh server start. Also Stop, after which the to-do left with the session and History recorded it with the to-do. Resume opened a tab running `claude --resume` in the right folder. That test session had never been asked anything, so Claude had no conversation to resume. That's why History now leaves such sessions out, and their to-dos come back.
 
 Not yet confirmed in real use:
 - Go to window for a renamed tab that isn't selected, which steps through the tabs. It worked in a dry run only.
-- Opening a repo from the ☰ menu after the elevation fix. A probe tab with the same arguments worked, but no real Claude launch has been tried yet.
+- Resume carrying on a real conversation, and bringing a to-do back onto the resumed session's card. The unit tests cover the to-do part.
 - Hearing an actual ding. The tests recorded the tones; no audio was played.
 - The theme setting, Todo filter and notification list (2026-11-19). Tested in headless Edge, where the list's clearing rules were run against simulated status changes. A real agent's change hasn't been seen to add or clear an entry yet.
-- History (2026-11-19). The transcript backfill ran against the real transcripts, and recording a close was tested with simulated snapshots. A real session closing, and Resume actually opening a tab, haven't been tried yet.
-- To-dos (2026-11-19). Creating, editing, choosing a folder from the repo menu, deleting and the Settings were tested in headless Edge; the session link and closing were unit-tested with simulated snapshots. The folder picker was opened from a test server and closed by a script: it showed in front, and both Cancel and Select Folder came back right. Not yet tried: a real Start, so whether Claude registers the `--session-id` it was given and the card hands over; and the picker from the real server.
-- Releases (2026-11-19). The v0.1.0 zip was built from the tagged commit, checked file by file against it, extracted and run: its bundled Node server answered on every endpoint. The uploaded zip downloads back matching its checksum. CI passes on Windows, macOS and Linux with Node 18 and 24, and builds the zip on GitHub's Windows runner. Not yet run: the Release workflow itself (the next version tag will be its first run), and the launcher from a downloaded zip (so SmartScreen's reaction to the unsigned launcher is unknown).
+- Releases (2026-11-19). v0.1.1 was the Release workflow's first run. Its draft was checked before publishing: the zip matched its checksum and the tag file by file, its bundled server answered on every endpoint, and its launcher, built on GitHub, started a server. CI passes on Windows, macOS and Linux with Node 18 and 24. Downloaded through a browser, the zip got no download warning, but the launcher got SmartScreen's warning when run, as the README describes.
 
 ## Public (2026-11-19)
 
-The repository is public, and v0.1.0 is released. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
+The repository is public, and v0.1.2 is the latest release. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
 
 No identifying information goes in the code, docs or history, including real work examples: use made-up names such as `work/acme/api`. The first commit was rewritten to match. Commits made locally are by "Lee" with the GitHub no-reply address. Merges made on GitHub's website use the account's profile name, with the same no-reply address.
 
@@ -41,12 +40,13 @@ GitHub attaches check results to commits, not pull requests. A failed Gitflow ch
 Also applied: `develop` as the default branch, merge commits only, merged branches deleted, and private vulnerability reporting. Reviews come from `.github/CODEOWNERS`, which names only the owner's GitHub handle so far. That handle is also in the repository's URL.
 
 Still to do:
-- Code-signing the launcher would stop the SmartScreen warning. It needs a certificate, such as Azure Trusted Signing.
+- Code-signing the launcher. It wouldn't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads. SignPath Foundation signs open-source projects for free, as the publisher, so no personal name goes on the certificate.
 - macOS and Linux need their own ways to open a terminal tab, find a window and pick a folder before they get releases.
 
 ## Known limits
 
 - Catch up adds its question to anything half-typed in that session's prompt box and sends both.
+- Once in testing (2026-11-19), Windows Terminal opened no tab for a to-do's Start, though `wt.exe` reported success. It didn't happen again in six more tries, from the server or a script, so the cause is unknown. A to-do in that state says "No session yet" after a minute and offers Start again. For the repo menu or Resume, click again.
 - A renamed tab is matched to its session only after it's been the selected tab, or by elimination.
 - After each page load the browser blocks sound until you click the page. Allowing media autoplay for `http://localhost:4317` in Edge should remove that step; untested.
 - The window and terminal features are Windows-only.
