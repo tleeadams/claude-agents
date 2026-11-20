@@ -1,55 +1,55 @@
 name: macOS terminals
 
-# Drives Terminal on a macOS runner with a stand-in session, as
-# `npm run check-terminals` does on a Mac: opening a window, going to its tab,
-# reading its title, Catch up and Stop. Runs when the terminal drivers change,
-# or by hand from the Actions tab.
+# Drives the macOS terminals on a macOS runner with a stand-in session, as
+# `npm run check-terminals` does on a Mac: opening a tab, going to it, reading
+# its title, Catch up and Stop. Runs when the terminal drivers change, or by
+# hand from the Actions tab.
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['lib/terminals/**', 'scripts/check-terminals.js', 'scripts/stand-in-session.js']
-  push:
-    branches: ['bugfix/macos-**']
+    paths: ['lib/terminals/**', 'scripts/check-terminals.js', 'scripts/stand-in-session.js', '.github/workflows/macos-terminals.yml']
 
 permissions:
   contents: read
 
 jobs:
-  terminal:
+  terminals:
     runs-on: macos-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-      - name: Allow driving Terminal
-        # On a Mac, macOS asks once whether to allow it; here nobody can
-        # answer, so the permission is granted up front for the processes
-        # that could be asking.
+      - name: Install the terminals
         run: |
-          echo "Processes above this step:"
-          p=$$; while [ "$p" -gt 1 ]; do ps -o pid=,ppid=,comm= -p "$p"; p=$(ps -o ppid= -p "$p" | tr -d ' '); done
+          brew install tmux >/dev/null
+          brew install --cask iterm2 ghostty kitty wezterm >/dev/null
+          # kitty's remote control, as the README says to turn it on.
+          mkdir -p ~/.config/kitty
+          printf 'allow_remote_control socket-only\nlisten_on unix:/tmp/kitty\n' > ~/.config/kitty/kitty.conf
+      - name: Allow driving them
+        # On a Mac, macOS asks once whether to allow it. Here nobody can
+        # answer, so it's allowed up front for the runner's agent, which
+        # macOS holds responsible for the step's processes.
+        run: |
           db="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
-          for client in /usr/bin/osascript /bin/bash /bin/sh "$(command -v node)" /opt/hca/hosted-compute-agent $(ps -A -o comm= | grep -E 'Runner\.(Worker|Listener)$' | sort -u); do
-            for target in com.apple.Terminal com.apple.systemevents; do
-              sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAppleEvents', '$client', 1, 2, 3, 1, 0, '$target', 0, CAST(strftime('%s','now') AS INTEGER));" \
-                && echo "allowed $client -> $target" || echo "couldn't allow $client -> $target"
-            done
+          for target in com.apple.Terminal com.googlecode.iterm2 com.mitchellh.ghostty com.apple.systemevents; do
+            sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAppleEvents', '/opt/hca/hosted-compute-agent', 1, 2, 3, 1, 0, '$target', 0, CAST(strftime('%s','now') AS INTEGER));"
           done
-          # The privacy service reads the rows again when it restarts.
           killall tccd 2>/dev/null || true
-          open -a Terminal
-          sleep 8
-      - name: Check Terminal and tmux
+      - name: Start the terminals
+        # Running, as they would be on a Mac in use; Terminal shows tmux.
         run: |
-          brew list tmux >/dev/null 2>&1 || brew install tmux >/dev/null
-          node scripts/check-terminals.js terminal tmux | tee check.txt
-          # Every line for Terminal should say yes.
-          if awk '/^Terminal:/{t=1;next} /^[A-Za-z]/{t=0} t && $2 != "yes" && $2 != "yes," {bad=1} END{exit !bad}' check.txt; then
-            echo "::error::Terminal didn't pass every check."
+          open -a Terminal && sleep 5
+          osascript -e 'tell application "Terminal" to do script "tmux new-session -A -s main"'
+          open -a iTerm && open -a Ghostty && open -a kitty && open -a WezTerm
+          sleep 10
+      - name: Check every terminal
+        run: |
+          node scripts/check-terminals.js terminal iterm2 ghostty kitty wezterm tmux | tee check.txt
+          # Every check should pass, except where a terminal can't do it.
+          if grep -E '^  [a-zA-Z]+ +(no|opened|typed)' check.txt; then
+            echo "::error::Not every check passed."
             exit 1
           fi
-      - name: What macOS's privacy checks said
-        if: failure()
-        run: log show --last 15m --predicate 'subsystem == "com.apple.TCC"' --style compact 2>/dev/null | grep -iE 'osascript|com\.apple\.Terminal|AppleEvents' | tail -30
