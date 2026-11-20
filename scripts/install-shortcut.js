@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Builds launcher/ClaudeAgents.exe and adds "Claude Agents" shortcuts to the
+// Builds launcher/Tabherd.exe and adds "Tabherd" shortcuts to the
 // Desktop and the Start menu. --uninstall removes the shortcuts. A release
 // has the launcher already built; it does the same with --install.
 
@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 const { buildLauncher } = require('./launcher');
 
 const LAUNCHER = path.join(__dirname, '..', 'launcher');
-const EXE = path.join(LAUNCHER, 'ClaudeAgents.exe');
+const EXE = path.join(LAUNCHER, 'Tabherd.exe');
 
 function main() {
   if (process.platform !== 'win32') {

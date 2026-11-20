@@ -1,20 +1,20 @@
-# Claude Agents
+# Tabherd
 
-A local dashboard that lists every [Claude Code](https://code.claude.com) session running on your computer and shows what each one is doing: which ones need you, which are working, and what they last said. It watches the sessions you start anyway, in any terminal, with nothing to set up in Claude Code. It runs entirely on your computer and has no dependencies beyond Node.
+**A dashboard for your Claude Code sessions.** Tabherd lists every [Claude Code](https://code.claude.com) session running on your computer and shows what each one is doing: which ones need you, which are working, and what they last said. It watches the sessions you start anyway, in any terminal, with nothing to set up in Claude Code. It runs entirely on your computer and has no dependencies beyond Node.
 
-Claude Agents is an independent project. It isn't made or endorsed by Anthropic.
+Tabherd is an independent project. It isn't made or endorsed by Anthropic. It was called Claude Agents up to version 0.1.2.
 
 ## Install (Windows)
 
-1. Download `claude-agents-v<version>-windows-x64.zip` from the [latest release](../../releases/latest). It includes Node, so there's nothing else to install.
+1. Download `tabherd-v<version>-windows-x64.zip` from the [latest release](../../releases/latest). It includes Node, so there's nothing else to install.
 2. Extract it somewhere to keep it, such as `%LOCALAPPDATA%\Programs`.
-3. Run **Claude Agents.exe**. To add it to the Start menu and the Desktop, run **Install shortcuts.cmd**. **Remove shortcuts.cmd** takes them away again.
+3. Run **Tabherd.exe**. To add it to the Start menu and the Desktop, run **Install shortcuts.cmd**. **Remove shortcuts.cmd** takes them away again.
 
 The launcher isn't code-signed yet: signing through SignPath Foundation is waiting on their approval (see the [code signing policy](#code-signing-policy)). Until then, Windows SmartScreen may warn about it the first time. Choose **More info**, then **Run anyway**. Each zip has a `.sha256` file beside it on the release page for checking the download.
 
-To update, replace the folder with the new release's. Settings, history and to-dos are kept in `~/.claude-agents`, outside it.
+To update, replace the folder with the new release's. Settings, history and to-dos are kept in `~/.tabherd`, outside it.
 
-To uninstall, run **Remove shortcuts.cmd**, then delete the folder. Delete `~/.claude-agents` too unless you want to keep your settings, history and to-dos. Nothing else is installed.
+To uninstall, run **Remove shortcuts.cmd**, then delete the folder. Delete `~/.tabherd` too unless you want to keep your settings, history and to-dos. Nothing else is installed.
 
 The launcher starts the dashboard server in the background, with no console window, if it isn't already running. It then opens the dashboard in its own Edge app window, with no tabs or address bar. If that window is already open, it brings the window to the front instead. A server started this way stops by itself 10 minutes after the last dashboard closes, and the next launch starts it again in a couple of seconds.
 
@@ -28,16 +28,16 @@ npm run serve      # serve without opening a browser
 npm run check      # print a one-off table in the terminal
 ```
 
-Set `PORT` to use another port. Set `CLAUDE_CONFIG_DIR` if your Claude config isn't in `~/.claude`. The server keeps its own settings in `~/.claude-agents`; set `AGENTS_DATA_DIR` to use another folder.
+Set `PORT` to use another port. Set `CLAUDE_CONFIG_DIR` if your Claude config isn't in `~/.claude`. The server keeps its own settings in `~/.tabherd`; set `TABHERD_DATA_DIR` to use another folder.
 
 On Windows, the same launcher and shortcuts as a release can be built from the source:
 
 ```
-npm run install-shortcut     # build launcher/ClaudeAgents.exe; add Desktop and Start menu shortcuts
+npm run install-shortcut     # build launcher/Tabherd.exe; add Desktop and Start menu shortcuts
 npm run uninstall-shortcut   # remove the shortcuts
 ```
 
-The launcher is a small C# program (`launcher/ClaudeAgents.cs`), compiled with the C# compiler that comes with Windows. The build also draws its icon from the same shapes as the favicon. Run the install again after moving the folder or switching Node versions; it records which `node.exe` to use.
+The launcher is a small C# program (`launcher/Tabherd.cs`), compiled with the C# compiler that comes with Windows. The build also draws its icon from the same shapes as the favicon. Run the install again after moving the folder or switching Node versions; it records which `node.exe` to use.
 
 ## Platform support
 
@@ -73,7 +73,7 @@ The filters in the header show every session, or only those in one state. **Todo
 
 The server makes up the session ID, so it knows which session the to-do turned into. Once that session appears, its card replaces the to-do's, with the to-do's title and notes at the top and **Copy** to paste them into Claude. Nothing is typed into Claude for you. If no session turns up within a minute, the to-do's card says so and offers **Start again**.
 
-When the session closes, the to-do goes too. Its title and notes stay with the session in History, and resuming the session brings the to-do back on its card. A session closed before Claude was asked anything has nothing to resume, so its to-do comes back to its own card instead, with its folder, ready to start again. **Delete** asks for a second click. To-dos are saved in `~/.claude-agents/todos.json`.
+When the session closes, the to-do goes too. Its title and notes stay with the session in History, and resuming the session brings the to-do back on its card. A session closed before Claude was asked anything has nothing to resume, so its to-do comes back to its own card instead, with its folder, ready to start again. **Delete** asks for a second click. To-dos are saved in `~/.tabherd/todos.json`.
 
 ## Settings
 
@@ -94,7 +94,7 @@ The gear button in the header opens Settings.
 
 **Repo menu**: every folder and repo under the repos folder, nested as in the ☰ menu, each with a tick box. Untick one to hide it, and everything inside it, from the menu. What's inside a hidden folder is greyed out but keeps its own setting, so ticking the folder again brings back exactly what was shown before. A folder with some repos hidden says how many, in amber. The filter box works like the menu's. A hidden path that's no longer in the repos folder is listed underneath, with ✕ to remove it.
 
-Theme, Card size and Notifications are saved in the browser, so each browser profile remembers its own choice. The rest are saved by the server, in `~/.claude-agents/settings.json`, so every browser shares them.
+Theme, Card size and Notifications are saved in the browser, so each browser profile remembers its own choice. The rest are saved by the server, in `~/.tabherd/settings.json`, so every browser shares them.
 
 ## Catch up (Windows)
 
@@ -123,7 +123,7 @@ The server pushes each update to open dashboards (`/api/stream`, server-sent eve
 
 The clock button in the header lists sessions that have closed, newest first and grouped by day. Each entry has the session's name, folder, branch and last prompt, and a filter searches all of those. **Resume** opens a Windows Terminal tab in the session's folder running `claude --resume <id>`, so the conversation carries on where it stopped. **Copy resume command** copies a command that does the same, for running yourself.
 
-The server records a session when it drops off the dashboard, keeping its terminal tab's title and session name. Sessions that closed while the server wasn't running, or while no dashboard was open, are read from their transcripts in `~/.claude/projects`, going back 30 days. Those show Claude's title for the session, or its first prompt, rather than the tab's title. Each transcript is read once and again only if it changes, so after the first scan (about a second for 300 MB of transcripts) opening History is quick. Only interactive sessions are listed, not `claude -p` or SDK runs. Nor are sessions closed before Claude was asked anything: Claude saves no conversation for those, so there's nothing to resume. A session that's running again, because it was resumed, leaves the list until it closes. The history keeps the latest 300 sessions, in `~/.claude-agents/history.json`.
+The server records a session when it drops off the dashboard, keeping its terminal tab's title and session name. Sessions that closed while the server wasn't running, or while no dashboard was open, are read from their transcripts in `~/.claude/projects`, going back 30 days. Those show Claude's title for the session, or its first prompt, rather than the tab's title. Each transcript is read once and again only if it changes, so after the first scan (about a second for 300 MB of transcripts) opening History is quick. Only interactive sessions are listed, not `claude -p` or SDK runs. Nor are sessions closed before Claude was asked anything: Claude saves no conversation for those, so there's nothing to resume. A session that's running again, because it was resumed, leaves the list until it closes. The history keeps the latest 300 sessions, in `~/.tabherd/history.json`.
 
 ## Repo menu (Windows)
 
@@ -166,7 +166,7 @@ All of it is read-only, from files Claude Code already writes:
 
 A session file whose process has exited, or whose PID now belongs to another process, is ignored.
 
-The only files the server writes are its own, in `~/.claude-agents`: `settings.json` holds the settings that aren't kept in the browser, `history.json` the closed sessions and `todos.json` the to-dos.
+The only files the server writes are its own, in `~/.tabherd`: `settings.json` holds the settings that aren't kept in the browser, `history.json` the closed sessions and `todos.json` the to-dos.
 
 ## Safety
 
@@ -192,7 +192,7 @@ To add a platform to the releases, give `scripts/build-release.js` a target for 
 
 Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
-Only the Windows launcher, `Claude Agents.exe`, is signed. The [Release workflow](.github/workflows/release.yml) builds it on GitHub from the tagged source, and SignPath signs it only after an approver approves that release. The bundled `node.exe` keeps the Node.js project's own signature.
+Only the Windows launcher, `Tabherd.exe`, is signed. The [Release workflow](.github/workflows/release.yml) builds it on GitHub from the tagged source, and SignPath signs it only after an approver approves that release. The bundled `node.exe` keeps the Node.js project's own signature.
 
 - Committers and reviewers: the people in [`.github/CODEOWNERS`](.github/CODEOWNERS)
 - Approvers: [@tleeadams](https://github.com/tleeadams)
@@ -201,4 +201,4 @@ Privacy: this program will not transfer any information to other networked syste
 
 ## License
 
-Claude Agents is free software under the [GNU General Public License, version 3](LICENSE) or later. Releases include Node.js, which has its own licence, in `node/LICENSE`.
+Tabherd is free software under the [GNU General Public License, version 3](LICENSE) or later. Releases include Node.js, which has its own licence, in `node/LICENSE`.

@@ -1,4 +1,4 @@
-// Opens the Claude Agents dashboard. Starts the dashboard server in the
+// Opens the Tabherd dashboard. Starts the dashboard server in the
 // background when it isn't running, then brings the dashboard's window to the
 // front, or opens one. --install adds Desktop and Start menu shortcuts to this
 // program, and --uninstall removes them. Built by scripts/launcher.js.
@@ -17,11 +17,13 @@ using System.Windows.Forms;
 
 static class Launcher
 {
-    const string AppName = "Claude Agents";
-    const string ShortcutName = "Claude Agents.lnk";
+    const string AppName = "Tabherd";
+    const string ShortcutName = "Tabherd.lnk";
+    // The shortcuts' name before the project was renamed, removed in their place.
+    const string OldShortcutName = "Claude Agents.lnk";
     const int Port = 4317;
     // The page sets this title, with a count in front when agents need you.
-    static readonly Regex WindowTitle = new Regex(@"^(\(\d+\) )?Claude Agents$");
+    static readonly Regex WindowTitle = new Regex(@"^(\(\d+\) )?Tabherd$");
 
     delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
@@ -61,7 +63,7 @@ static class Launcher
                 }
                 catch (Win32Exception)
                 {
-                    Fail("Claude Agents needs Node.js 18 or later, and couldn't find it. Install it from nodejs.org, or download a release of Claude Agents that includes it.");
+                    Fail("Tabherd needs Node.js 18 or later, and couldn't find it. Install it from nodejs.org, or download a release of Tabherd that includes it.");
                     return;
                 }
                 if (!WaitForServer(TimeSpan.FromSeconds(20)))
@@ -102,9 +104,9 @@ static class Launcher
         return "node";
     }
 
-    // Creates or removes "Claude Agents" on the Desktop and in the Start menu,
-    // returning the files it changed. WScript.Shell is late-bound, so no
-    // interop assembly is needed.
+    // Creates or removes "Tabherd" on the Desktop and in the Start menu,
+    // returning the files it changed. Either way, shortcuts with the old name
+    // go. WScript.Shell is late-bound, so no interop assembly is needed.
     static string[] Shortcuts(bool create)
     {
         string exe = Assembly.GetExecutingAssembly().Location;
@@ -113,6 +115,12 @@ static class Launcher
         object shell = create ? Activator.CreateInstance(shellType) : null;
         foreach (var folder in new[] { Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolder.Programs })
         {
+            string old = Path.Combine(Environment.GetFolderPath(folder), OldShortcutName);
+            if (File.Exists(old))
+            {
+                File.Delete(old);
+                changed.Add(old + " (old name)");
+            }
             string file = Path.Combine(Environment.GetFolderPath(folder), ShortcutName);
             if (!create)
             {
@@ -126,7 +134,7 @@ static class Launcher
             linkType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, link, new object[] { exe });
             linkType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, link, new object[] { Path.GetDirectoryName(exe) });
             linkType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, link, new object[] { exe + ",0" });
-            linkType.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "See every running Claude Code agent" });
+            linkType.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "See every running Claude Code session" });
             linkType.InvokeMember("Save", BindingFlags.InvokeMethod, null, link, null);
             changed.Add(file);
         }

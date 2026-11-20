@@ -1,7 +1,7 @@
 'use strict';
 
 // Builds the Windows launcher: draws its icon from the same shapes as
-// public/favicon.svg, then compiles launcher/ClaudeAgents.cs with the C#
+// public/favicon.svg, then compiles launcher/Tabherd.cs with the C#
 // compiler that comes with Windows. Used by install-shortcut.js and
 // build-release.js.
 
@@ -10,7 +10,7 @@ const path = require('path');
 const zlib = require('zlib');
 const { execFileSync } = require('child_process');
 
-const SOURCE = path.join(__dirname, '..', 'launcher', 'ClaudeAgents.cs');
+const SOURCE = path.join(__dirname, '..', 'launcher', 'Tabherd.cs');
 const { version: VERSION } = require('../package.json');
 const CSC = path.join(process.env.WINDIR || 'C:\\Windows', 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe');
 const ICON_SIZES = [16, 20, 24, 32, 40, 48, 64, 256];
@@ -164,8 +164,8 @@ function versionInfo(version) {
   if (!/^\d+\.\d+\.\d+$/.test(numbers)) throw new Error(`Not a version: ${version}`);
   return [
     'using System.Reflection;',
-    '[assembly: AssemblyTitle("Claude Agents")]',
-    '[assembly: AssemblyProduct("Claude Agents")]',
+    '[assembly: AssemblyTitle("Tabherd")]',
+    '[assembly: AssemblyProduct("Tabherd")]',
     `[assembly: AssemblyVersion("${numbers}.0")]`,
     `[assembly: AssemblyFileVersion("${numbers}.0")]`,
     `[assembly: AssemblyInformationalVersion("${version}")]`,
