@@ -76,8 +76,11 @@ Keep examples, tests and docs free of real names. Use made-up projects, folders 
 1. Start the release from `develop`: `git switch -c release/<version> develop`. Set the version in `package.json` and add a `## <version>` section to `CHANGELOG.md`; the release notes come from it. Commit, push, and open a pull request into `main`.
 2. Merge it once the checks pass and it's been reviewed.
 3. Tag the merge on `main`: `git switch main && git pull && git tag v<version> && git push origin v<version>`.
-4. The Release workflow tests, builds the zips and makes a draft release. Once signing is set up, it first waits up to an hour for the launcher's signing request to be approved on [signpath.io](https://app.signpath.io); an approver approves it there. Check the draft and publish it.
+4. The Release workflow tests, builds the downloads and makes a draft release. Once signing is set up, it first waits up to an hour for the launcher's signing request to be approved on [signpath.io](https://app.signpath.io); an approver approves it there. Check the draft and publish it.
 5. Open a pull request from `main` into `develop`, so `develop` has the release's changes.
+6. Package managers:
+   - **Homebrew** ([tleeadams/homebrew-tap](https://github.com/tleeadams/homebrew-tap)) picks the release up by itself within a day: its Update workflow installs and tests the formula at the new release on macOS and Linux, then commits it. Run that workflow from its Actions tab to do it now.
+   - **winget**: submit the new version to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) as a pull request, with the three manifest files for `tleeadams.Tabherd` updated to the new version, URL and SHA-256 (`wingetcreate update tleeadams.Tabherd -v <version> -u <zip url> --submit` does it). Microsoft validates and merges it, typically within a few days.
 
 ### Hotfixes
 

@@ -20,6 +20,16 @@ The launcher starts the dashboard server in the background, with no console wind
 
 ### macOS and Linux
 
+With [Homebrew](https://brew.sh):
+
+```
+brew install tleeadams/tap/tabherd
+```
+
+Then run `tabherd`. `tabherd --install` adds Tabherd to Applications on macOS, or to the applications menu on Linux, and `brew upgrade` keeps it current. It uses Homebrew's Node.
+
+Or from a download:
+
 1. Download `tabherd-v<version>-macos-arm64.tar.gz`, or the one for your system, and unpack it somewhere to keep it: `tar -xzf tabherd-v*.tar.gz -C ~/.local/share`. That makes the folder `~/.local/share/tabherd-macos-arm64`.
 2. Run `./tabherd` in that folder.
 3. To add Tabherd to your applications, run `./tabherd --install`: on macOS that's **Tabherd** in `~/Applications`, on Linux an entry in the applications menu. Both also add a `tabherd` command in `~/.local/bin`. `./tabherd --uninstall` removes them again.
