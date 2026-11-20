@@ -4,19 +4,35 @@
 
 Tabherd is an independent project. It isn't made or endorsed by Anthropic. It was called Claude Agents up to version 0.1.2.
 
-## Install (Windows)
+## Install
 
-1. Download `tabherd-v<version>-windows-x64.zip` from the [latest release](../../releases/latest). It includes Node, so there's nothing else to install.
+Each [release](../../releases/latest) has a download for Windows, macOS (Apple silicon `arm64`, Intel `x64`) and Linux (`x64`, `arm64`). Each includes Node, so there's nothing else to install, and has a `.sha256` file beside it for checking the download.
+
+### Windows
+
+1. Download `tabherd-v<version>-windows-x64.zip`.
 2. Extract it somewhere to keep it, such as `%LOCALAPPDATA%\Programs`.
 3. Run **Tabherd.exe**. To add it to the Start menu and the Desktop, run **Install shortcuts.cmd**. **Remove shortcuts.cmd** takes them away again.
 
-The launcher isn't code-signed yet: signing through SignPath Foundation is waiting on their approval (see the [code signing policy](#code-signing-policy)). Until then, Windows SmartScreen may warn about it the first time. Choose **More info**, then **Run anyway**. Each zip has a `.sha256` file beside it on the release page for checking the download.
+The launcher isn't code-signed yet: signing through SignPath Foundation is waiting on their approval (see the [code signing policy](#code-signing-policy)). Until then, Windows SmartScreen may warn about it the first time. Choose **More info**, then **Run anyway**.
+
+The launcher starts the dashboard server in the background, with no console window, if it isn't already running. It then opens the dashboard in its own Edge app window, with no tabs or address bar. If that window is already open, it brings the window to the front instead.
+
+### macOS and Linux
+
+1. Download `tabherd-v<version>-macos-arm64.tar.gz`, or the one for your system, and unpack it somewhere to keep it: `tar -xzf tabherd-v*.tar.gz -C ~/.local/share`.
+2. Run `./tabherd` in that folder.
+3. To add Tabherd to your applications, run `./tabherd --install`: on macOS that's **Tabherd** in `~/Applications`, on Linux an entry in the applications menu. Both also add a `tabherd` command in `~/.local/bin`. `./tabherd --uninstall` removes them again.
+
+`tabherd` starts the dashboard server in the background if it isn't running, then opens the dashboard: as an app window, with no tabs or address bar, if Chrome, Edge, Brave, Chromium or Vivaldi is installed, otherwise in your browser.
+
+### Updating and uninstalling
+
+A server started by the launcher stops by itself 10 minutes after the last dashboard closes, and the next launch starts it again in a couple of seconds.
 
 To update, replace the folder with the new release's. Settings, history and to-dos are kept in `~/.tabherd`, outside it.
 
-To uninstall, run **Remove shortcuts.cmd**, then delete the folder. Delete `~/.tabherd` too unless you want to keep your settings, history and to-dos. Nothing else is installed.
-
-The launcher starts the dashboard server in the background, with no console window, if it isn't already running. It then opens the dashboard in its own Edge app window, with no tabs or address bar. If that window is already open, it brings the window to the front instead. A server started this way stops by itself 10 minutes after the last dashboard closes, and the next launch starts it again in a couple of seconds.
+To uninstall, remove the shortcuts (**Remove shortcuts.cmd**, or `./tabherd --uninstall`), then delete the folder. Delete `~/.tabherd` too unless you want to keep your settings, history and to-dos. Nothing else is installed.
 
 ## Run from source
 
@@ -30,14 +46,14 @@ npm run check      # print a one-off table in the terminal
 
 Set `PORT` to use another port. Set `CLAUDE_CONFIG_DIR` if your Claude config isn't in `~/.claude`. The server keeps its own settings in `~/.tabherd`; set `TABHERD_DATA_DIR` to use another folder.
 
-On Windows, the same launcher and shortcuts as a release can be built from the source:
+The same launcher and shortcuts as a release can be set up from the source:
 
 ```
-npm run install-shortcut     # build launcher/Tabherd.exe; add Desktop and Start menu shortcuts
-npm run uninstall-shortcut   # remove the shortcuts
+npm run install-shortcut     # add Tabherd to the Start menu, Applications or applications menu
+npm run uninstall-shortcut   # remove it again
 ```
 
-The launcher is a small C# program (`launcher/Tabherd.cs`), compiled with the C# compiler that comes with Windows. The build also draws its icon from the same shapes as the favicon. Run the install again after moving the folder or switching Node versions; it records which `node.exe` to use.
+On Windows the launcher is a small C# program (`launcher/Tabherd.cs`), compiled with the C# compiler that comes with Windows, with its icon drawn from the same shapes as the favicon. Run the install again after moving the folder or switching Node versions; it records which `node.exe` to use. On macOS and Linux it's a shell script, `launcher/tabherd.sh`, which uses the `node` on your PATH.
 
 ## Platform support
 
@@ -68,7 +84,6 @@ Settings › New sessions › **Terminal** chooses where Claude opens; *Automati
 
 Checked that way so far: Windows Terminal; tmux, kitty, WezTerm, GNOME Terminal and Konsole on Ubuntu 24.04; and Terminal, iTerm2, Ghostty, kitty and tmux on macOS, where a workflow repeats the check whenever the drivers change, except for kitty. Not yet checked: WezTerm on macOS, and Ghostty and Ptyxis on Linux.
 
-Releases with the launcher are Windows-only so far. On macOS and Linux, run it from source.
 
 ## What it shows
 
