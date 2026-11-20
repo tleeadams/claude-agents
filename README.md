@@ -10,9 +10,11 @@ Claude Agents is an independent project. It isn't made or endorsed by Anthropic.
 2. Extract it somewhere to keep it, such as `%LOCALAPPDATA%\Programs`.
 3. Run **Claude Agents.exe**. To add it to the Start menu and the Desktop, run **Install shortcuts.cmd**. **Remove shortcuts.cmd** takes them away again.
 
-The launcher isn't code-signed yet, so Windows SmartScreen may warn about it the first time. Choose **More info**, then **Run anyway**. Each zip has a `.sha256` file beside it on the release page for checking the download.
+The launcher isn't code-signed yet: signing through SignPath Foundation is waiting on their approval (see the [code signing policy](#code-signing-policy)). Until then, Windows SmartScreen may warn about it the first time. Choose **More info**, then **Run anyway**. Each zip has a `.sha256` file beside it on the release page for checking the download.
 
 To update, replace the folder with the new release's. Settings, history and to-dos are kept in `~/.claude-agents`, outside it.
+
+To uninstall, run **Remove shortcuts.cmd**, then delete the folder. Delete `~/.claude-agents` too unless you want to keep your settings, history and to-dos. Nothing else is installed.
 
 The launcher starts the dashboard server in the background, with no console window, if it isn't already running. It then opens the dashboard in its own Edge app window, with no tabs or address bar. If that window is already open, it brings the window to the front instead. A server started this way stops by itself 10 minutes after the last dashboard closes, and the next launch starts it again in a couple of seconds.
 
@@ -185,6 +187,17 @@ There are no dependencies to install. CI runs the tests on Windows, macOS and Li
 The repository follows gitflow: work happens on `feature/` branches off `develop`, and `main` only takes releases. [CONTRIBUTING.md](CONTRIBUTING.md) has the branch rules, how they're enforced, and the steps for a release. Releases bundle the Node version in `.node-version`.
 
 To add a platform to the releases, give `scripts/build-release.js` a target for it and add its runner to `.github/workflows/release.yml`.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+Only the Windows launcher, `Claude Agents.exe`, is signed. The [Release workflow](.github/workflows/release.yml) builds it on GitHub from the tagged source, and SignPath signs it only after an approver approves that release. The bundled `node.exe` keeps the Node.js project's own signature.
+
+- Committers and reviewers: the people in [`.github/CODEOWNERS`](.github/CODEOWNERS)
+- Approvers: [@tleeadams](https://github.com/tleeadams)
+
+Privacy: this program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
 
 ## License
 

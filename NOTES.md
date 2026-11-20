@@ -40,7 +40,7 @@ GitHub attaches check results to commits, not pull requests. A failed Gitflow ch
 Also applied: `develop` as the default branch, merge commits only, merged branches deleted, and private vulnerability reporting. Reviews come from `.github/CODEOWNERS`, which names only the owner's GitHub handle so far. That handle is also in the repository's URL.
 
 Still to do:
-- Code-signing the launcher. It wouldn't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads. SignPath Foundation signs open-source projects for free, as the publisher, so no personal name goes on the certificate.
+- Code-signing the launcher, through SignPath Foundation, which signs open-source projects for free as the publisher, so no personal name goes on the certificate. The Release workflow, the policy in the README and `.signpath/artifact-configuration.xml` are ready (2026-11-20). The signing steps haven't run yet: they need the project approved, then set up as in CONTRIBUTING.md. Signing won't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads.
 - macOS and Linux need their own ways to open a terminal tab, find a window and pick a folder before they get releases.
 
 ## Known limits
