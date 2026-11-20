@@ -23,7 +23,7 @@ Not yet confirmed in real use:
 
 ## Public (2026-11-19)
 
-The repository is public, and v0.1.1 is the latest release. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
+The repository is public, and v0.1.2 is the latest release. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
 
 No identifying information goes in the code, docs or history, including real work examples: use made-up names such as `work/acme/api`. The first commit was rewritten to match. Commits made locally are by "Lee" with the GitHub no-reply address. Merges made on GitHub's website use the account's profile name, with the same no-reply address.
 
