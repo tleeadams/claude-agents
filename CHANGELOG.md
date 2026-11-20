@@ -10,6 +10,7 @@ Notable changes in each release. Version numbers follow [Semantic Versioning](ht
 - `npm start` opens a dashboard that's already running instead of failing, and opens it as an app window where Chrome, Edge, Brave, Chromium or Vivaldi is installed.
 - `npm run check-terminals` checks each terminal on the computer with a stand-in session, not Claude.
 - `Tabherd.exe` works when it's started through a link, as winget starts portable apps: it follows the link to its own folder.
+- The folder in each download no longer has the version in its name (`tabherd-windows-x64`, not `tabherd-v0.2.0-windows-x64`), so updating replaces the same folder and shortcuts to it keep working. Shortcuts made for 0.2.0 or earlier point at the old folder: run **Install shortcuts.cmd** again after updating.
 - **Downloads for macOS** (Apple silicon and Intel) **and Linux** (x64 and arm64), with Node included. `tabherd` opens the dashboard; `tabherd --install` adds Tabherd to Applications on macOS or the applications menu on Linux, and a `tabherd` command. `npm run install-shortcut` does the same from the source.
 - Each release page starts by saying what Tabherd does, as SignPath Foundation asks of download pages.
 

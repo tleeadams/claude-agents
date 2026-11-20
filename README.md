@@ -11,7 +11,7 @@ Each [release](../../releases/latest) has a download for Windows, macOS (Apple s
 ### Windows
 
 1. Download `tabherd-v<version>-windows-x64.zip`.
-2. Extract it somewhere to keep it, such as `%LOCALAPPDATA%\Programs`.
+2. Extract it somewhere to keep it, such as `%LOCALAPPDATA%\Programs`. It holds one folder, `tabherd-windows-x64`.
 3. Run **Tabherd.exe**. To add it to the Start menu and the Desktop, run **Install shortcuts.cmd**. **Remove shortcuts.cmd** takes them away again.
 
 The launcher isn't code-signed yet: signing through SignPath Foundation is waiting on their approval (see the [code signing policy](#code-signing-policy)). Until then, Windows SmartScreen may warn about it the first time. Choose **More info**, then **Run anyway**.
@@ -20,7 +20,7 @@ The launcher starts the dashboard server in the background, with no console wind
 
 ### macOS and Linux
 
-1. Download `tabherd-v<version>-macos-arm64.tar.gz`, or the one for your system, and unpack it somewhere to keep it: `tar -xzf tabherd-v*.tar.gz -C ~/.local/share`.
+1. Download `tabherd-v<version>-macos-arm64.tar.gz`, or the one for your system, and unpack it somewhere to keep it: `tar -xzf tabherd-v*.tar.gz -C ~/.local/share`. That makes the folder `~/.local/share/tabherd-macos-arm64`.
 2. Run `./tabherd` in that folder.
 3. To add Tabherd to your applications, run `./tabherd --install`: on macOS that's **Tabherd** in `~/Applications`, on Linux an entry in the applications menu. Both also add a `tabherd` command in `~/.local/bin`. `./tabherd --uninstall` removes them again.
 
@@ -30,7 +30,7 @@ The launcher starts the dashboard server in the background, with no console wind
 
 A server started by the launcher stops by itself 10 minutes after the last dashboard closes, and the next launch starts it again in a couple of seconds.
 
-To update, replace the folder with the new release's. Settings, history and to-dos are kept in `~/.tabherd`, outside it.
+To update, replace the folder with the new release's. Its name doesn't change between releases, so shortcuts and the `tabherd` command keep working. Settings, history and to-dos are kept in `~/.tabherd`, outside it.
 
 To uninstall, remove the shortcuts (**Remove shortcuts.cmd**, or `./tabherd --uninstall`), then delete the folder. Delete `~/.tabherd` too unless you want to keep your settings, history and to-dos. Nothing else is installed.
 

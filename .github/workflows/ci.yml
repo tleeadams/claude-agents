@@ -70,7 +70,7 @@ jobs:
           PORT: '4421'
         run: |
           mkdir try && tar -xzf dist/tabherd-v*.tar.gz -C try
-          cd try/tabherd-v*
+          cd try/tabherd-*
           export TABHERD_DATA_DIR="$(mktemp -d)"
           ./tabherd
           for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT/" | grep -q '<title>Tabherd</title>' && break; sleep 1; done

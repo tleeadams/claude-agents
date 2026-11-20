@@ -154,9 +154,10 @@ async function main() {
   if (target.os === 'win32' && process.platform !== 'win32') throw new Error('The Windows release is built on Windows, for its C# compiler.');
   if (target.os !== 'win32' && process.platform === 'win32') throw new Error('The macOS and Linux releases are built on macOS or Linux, which keep their files executable.');
   const notes = releaseNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version);
-  const name = `tabherd-v${version}-${targetName}`;
-  const stage = path.join(DIST, name);
-  const file = path.join(DIST, `${name}.${target.archive}`);
+  // The folder inside has no version in its name, so each release unpacks to
+  // the same folder, and paths to it, such as shortcuts and winget's, last.
+  const stage = path.join(DIST, `tabherd-${targetName}`);
+  const file = path.join(DIST, `tabherd-v${version}-${targetName}.${target.archive}`);
   const only = ['--stage', '--pack'].find((flag) => process.argv.includes(flag));
 
   if (only !== '--pack') {
