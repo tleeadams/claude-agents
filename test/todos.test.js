@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-process.env.AGENTS_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-test-'));
+process.env.TABHERD_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-test-'));
 const todos = require('../lib/todos');
 
 const ID1 = '11111111-1111-4111-8111-111111111111';
@@ -88,6 +88,6 @@ test('a session closed before it was asked anything gives its to-do back', () =>
 
 test('to-dos are saved to disk', () => {
   const { todo } = todos.create({ title: 'Saved' });
-  const saved = JSON.parse(fs.readFileSync(path.join(process.env.AGENTS_DATA_DIR, 'todos.json'), 'utf8'));
+  const saved = JSON.parse(fs.readFileSync(path.join(process.env.TABHERD_DATA_DIR, 'todos.json'), 'utf8'));
   assert.ok(saved.todos.some((t) => t.id === todo.id && t.title === 'Saved'));
 });

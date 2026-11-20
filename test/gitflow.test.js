@@ -61,7 +61,7 @@ test('the pre-push hook refuses updates to main and develop, and stray names', (
 });
 
 test('the pre-commit hook allows commits only on working branches, and merges', () => {
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-git-'));
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-git-'));
   const git = (...args) => execFileSync('git', args, { cwd: repo, stdio: 'ignore' });
   git('init', '-q');
   git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-q', '--allow-empty', '-m', 'start');

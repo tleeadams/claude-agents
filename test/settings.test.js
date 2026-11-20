@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-process.env.AGENTS_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-test-'));
+process.env.TABHERD_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-test-'));
 const settings = require('../lib/settings');
 
 test('defaults are safe', () => {
@@ -24,7 +24,7 @@ test('each setting is checked', () => {
 });
 
 test('the to-do start folder must exist', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-start-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-start-'));
   assert.equal(settings.update({ todoStartFolder: dir }).settings.todoStartFolder, path.resolve(dir));
   assert.equal(settings.update({ todoStartFolder: '~' }).settings.todoStartFolder, path.resolve(os.homedir()));
   assert.equal(settings.update({ todoStartFolder: '  ' }).settings.todoStartFolder, '');
@@ -36,6 +36,6 @@ test('changes are all or none, and saved', () => {
   const before = settings.get();
   assert.equal(settings.update({ skipPermissions: !before.skipPermissions, todoFolderSource: 'nope' }).ok, false);
   assert.deepEqual(settings.get(), before);
-  const saved = JSON.parse(fs.readFileSync(path.join(process.env.AGENTS_DATA_DIR, 'settings.json'), 'utf8'));
+  const saved = JSON.parse(fs.readFileSync(path.join(process.env.TABHERD_DATA_DIR, 'settings.json'), 'utf8'));
   assert.deepEqual(saved, before);
 });

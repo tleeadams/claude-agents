@@ -108,8 +108,8 @@ For maintainers, once, after creating the repository on GitHub:
 The launcher is signed by [SignPath Foundation](https://signpath.org), which signs open-source projects for free, under the policy in the README. Until the project is set up there, releases ship with the launcher unsigned. To set it up:
 
 1. Apply at [signpath.org/apply](https://signpath.org/apply). Everyone on the team, on GitHub and on SignPath, needs two-factor sign-in.
-2. Once approved, on [app.signpath.io](https://app.signpath.io): link the project to the predefined GitHub.com trusted build system, and paste `.signpath/artifact-configuration.xml` into its default artifact configuration. The workflow uploads only `Claude Agents.exe`. Releases are built from version tags on `main`, so if the signing policy limits what can be signed by branch, allow the `v*` tags.
+2. Once approved, on [app.signpath.io](https://app.signpath.io): link the project to the predefined GitHub.com trusted build system, and paste `.signpath/artifact-configuration.xml` into its default artifact configuration. The workflow uploads only `Tabherd.exe`. Releases are built from version tags on `main`, so if the signing policy limits what can be signed by branch, allow the `v*` tags.
 3. Make an API token for a user who can submit signing requests to the release signing policy.
-4. In the repository's settings, under **Secrets and variables → Actions**, add the token as the secret `SIGNPATH_API_TOKEN` and the organization's ID as the variable `SIGNPATH_ORGANIZATION_ID`. If the project or signing policy aren't called `claude-agents` and `release-signing`, add `SIGNPATH_PROJECT_SLUG` or `SIGNPATH_POLICY_SLUG` too.
+4. In the repository's settings, under **Secrets and variables → Actions**, add the token as the secret `SIGNPATH_API_TOKEN` and the organization's ID as the variable `SIGNPATH_ORGANIZATION_ID`. If the project or signing policy aren't called `tabherd` and `release-signing`, add `SIGNPATH_PROJECT_SLUG` or `SIGNPATH_POLICY_SLUG` too.
 
 The variable turns signing on. The workflow checks the signature before zipping, and fails rather than release a launcher that isn't validly signed.

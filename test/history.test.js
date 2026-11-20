@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-process.env.AGENTS_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-test-'));
+process.env.TABHERD_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-test-'));
 const history = require('../lib/history');
 
 const session = (id, prompts) => ({ id, pid: 10, kind: 'interactive', cwd: os.tmpdir(), name: `s-${prompts}`, prompts, startedAt: 1000 });

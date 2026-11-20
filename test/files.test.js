@@ -54,7 +54,7 @@ test('the launcher icon draws', () => {
 
 test("the launcher's file details carry the version, in numbers where they have to be", () => {
   const info = versionInfo('0.2.0-beta.1');
-  assert.match(info, /AssemblyProduct\("Claude Agents"\)/);
+  assert.match(info, /AssemblyProduct\("Tabherd"\)/);
   assert.match(info, /AssemblyFileVersion\("0\.2\.0\.0"\)/);
   assert.match(info, /AssemblyInformationalVersion\("0\.2\.0-beta\.1"\)/);
   assert.throws(() => versionInfo('1.0'), /Not a version/);

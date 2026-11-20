@@ -8,7 +8,7 @@ const path = require('path');
 
 // A repos folder: work/one and work/two (a worktree, whose .git is a file),
 // home/three, a folder with no repos, and a repo inside node_modules.
-const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-repos-'));
+const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-repos-'));
 for (const dir of ['work/one/.git', 'home/three/.git', 'empty/nothing', 'work/node_modules/dep/.git']) {
   fs.mkdirSync(path.join(ROOT, ...dir.split('/')), { recursive: true });
 }
@@ -16,7 +16,7 @@ fs.mkdirSync(path.join(ROOT, 'work', 'two'));
 fs.writeFileSync(path.join(ROOT, 'work', 'two', '.git'), 'gitdir: elsewhere\n');
 
 process.env.REPOS_DIR = ROOT;
-process.env.AGENTS_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-agents-test-'));
+process.env.TABHERD_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-test-'));
 const { scanRepos, resolveRepo } = require('../lib/repos');
 const settings = require('../lib/settings');
 

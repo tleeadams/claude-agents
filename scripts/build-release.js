@@ -28,18 +28,18 @@ const MIN_NODE = 18;
 
 // What every release holds, whatever the platform. The launcher's and the
 // build's source come too, as the GPL asks of anything shipped compiled.
-const APP_FILES = ['server.js', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'lib', 'public', 'launcher/ClaudeAgents.cs', 'scripts'];
+const APP_FILES = ['server.js', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'lib', 'public', 'launcher/Tabherd.cs', 'scripts'];
 
 const TARGETS = {
   win32: {
     name: `windows-${process.arch}`,
     build(stage, node) {
       // Beside server.js, where the launcher looks for it.
-      buildLauncher(path.join(stage, 'Claude Agents.exe'), path.join(DIST, 'app.ico'));
+      buildLauncher(path.join(stage, 'Tabherd.exe'), path.join(DIST, 'app.ico'));
       bundleNode(node, path.join(stage, 'node', 'node.exe'));
       // Double-click versions of the launcher's --install and --uninstall.
-      fs.writeFileSync(path.join(stage, 'Install shortcuts.cmd'), '@"%~dp0Claude Agents.exe" --install\r\n');
-      fs.writeFileSync(path.join(stage, 'Remove shortcuts.cmd'), '@"%~dp0Claude Agents.exe" --uninstall\r\n');
+      fs.writeFileSync(path.join(stage, 'Install shortcuts.cmd'), '@"%~dp0Tabherd.exe" --install\r\n');
+      fs.writeFileSync(path.join(stage, 'Remove shortcuts.cmd'), '@"%~dp0Tabherd.exe" --uninstall\r\n');
     },
     // Windows' own tar (bsdtar) writes zips; Git's GNU tar, which may come
     // first on the PATH, doesn't.
@@ -75,7 +75,7 @@ function main() {
   const target = TARGETS[process.platform];
   if (!target) throw new Error(`Releases for ${process.platform} aren't supported yet. Run the app from source with "npm start".`);
   const notes = releaseNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version);
-  const name = `claude-agents-v${version}-${target.name}`;
+  const name = `tabherd-v${version}-${target.name}`;
   const stage = path.join(DIST, name);
   const only = ['--stage', '--pack'].find((flag) => process.argv.includes(flag));
 

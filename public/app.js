@@ -2,6 +2,17 @@
 
 let token = document.querySelector('meta[name="agents-token"]').content;
 
+// Settings this browser saved before the project was renamed Tabherd, under
+// its old name, move to the new one.
+try {
+  for (const key of Object.keys(localStorage)) {
+    if (!key.startsWith('claude-agents:')) continue;
+    const renamed = `tabherd:${key.slice('claude-agents:'.length)}`;
+    if (localStorage.getItem(renamed) === null) localStorage.setItem(renamed, localStorage.getItem(key));
+    localStorage.removeItem(key);
+  }
+} catch {}
+
 const STATUS = {
   waiting: { label: 'Needs you', group: 'needs', rank: 0 },
   busy: { label: 'Working', group: 'working', rank: 1 },
@@ -595,7 +606,7 @@ function render() {
   counts.todo = counts.needs + counts.idle + todos.length;
   for (const [k, v] of Object.entries(counts)) $(`n-${k}`).textContent = v;
   for (const k of ['todo', 'needs']) document.querySelector(`[data-filter="${k}"]`).classList.toggle('has', counts.needs > 0);
-  document.title = counts.needs ? `(${counts.needs}) Claude Agents` : 'Claude Agents';
+  document.title = counts.needs ? `(${counts.needs}) Tabherd` : 'Tabherd';
   $('host').textContent = snap.host;
 
   const groups = FILTER_GROUPS[filter] || [filter];
@@ -638,7 +649,7 @@ function render() {
 
 // ---- updates and dings ---------------------------------------------------------
 
-const SOUND_KEY = 'claude-agents:sound';
+const SOUND_KEY = 'tabherd:sound';
 const DING_GAP_MS = 2000;
 let soundOn = true;
 try {
@@ -750,8 +761,8 @@ function announce({ needs, done }) {
 // Each "needs you" or "finished" also goes in a list, so it can still be seen
 // after its toast fades. The setting under Notifications keeps it in this
 // browser across reloads.
-const NOTES_KEY = 'claude-agents:notifications';
-const KEEP_NOTES_KEY = 'claude-agents:keep-notifications';
+const NOTES_KEY = 'tabherd:notifications';
+const KEEP_NOTES_KEY = 'tabherd:keep-notifications';
 let keepNotes = true;
 let notes = [];
 let notesKey = null;
@@ -889,7 +900,7 @@ function confirmStop(a) {
 
 // ---- repo menu ---------------------------------------------------------------
 
-const OPEN_FOLDERS_KEY = 'claude-agents:open-folders';
+const OPEN_FOLDERS_KEY = 'tabherd:open-folders';
 let repoData = null;
 let openFolders = new Set();
 try {
@@ -1220,10 +1231,10 @@ $('history').addEventListener('click', (e) => e.target === e.currentTarget && e.
 
 // ---- settings ----------------------------------------------------------------
 
-// A group of radio buttons saved in this browser as claude-agents:<name>. The
+// A group of radio buttons saved in this browser as tabherd:<name>. The
 // first value is the default. `apply` runs now and on every change.
 function radioSetting(name, values, apply) {
-  const key = `claude-agents:${name}`;
+  const key = `tabherd:${name}`;
   const radios = document.querySelectorAll(`input[name="${name}"]`);
   let value = values[0];
   try {
