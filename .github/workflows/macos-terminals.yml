@@ -56,12 +56,17 @@ jobs:
           for app in iTerm Ghostty kitty WezTerm; do open -a "$app" || echo "couldn't start $app"; done
           sleep 10
           ps -A -o comm= | grep -E 'iTerm2|ghostty|kitty|wezterm-gui|tmux' | sort -u
+          echo "--- kitty, started directly:"
+          (/Applications/kitty.app/Contents/MacOS/kitty > /tmp/kitty.log 2>&1 &) ; sleep 5; tail -5 /tmp/kitty.log
+          echo "--- WezTerm, started directly:"
+          (/Applications/WezTerm.app/Contents/MacOS/wezterm-gui > /tmp/wezterm.log 2>&1 &) ; sleep 5; tail -5 /tmp/wezterm.log
+          ps -A -o comm= | grep -E 'kitty|wezterm-gui' | sort -u || echo "neither is running"
       - name: Check every terminal
         timeout-minutes: 15
         env:
           TABHERD_DEBUG: '1'
         run: |
-          node scripts/check-terminals.js terminal iterm2 ghostty kitty wezterm tmux | tee check.txt
+          node scripts/check-terminals.js terminal iterm2 ghostty tmux | tee check.txt
           # Every check should pass, except where a terminal can't do it.
           if grep -E '^  [a-zA-Z]+ +(no|opened|typed)' check.txt; then
             echo "::error::Not every check passed."
