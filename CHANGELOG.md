@@ -2,7 +2,7 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
-## Unreleased
+## 0.1.2 - 2026-11-20
 
 - History no longer lists sessions closed before Claude was asked anything. Claude saves no conversation for them, so Resume opened a tab that closed straight away.
 - A to-do whose session closes unused comes back to its own card, ready to start again, rather than disappearing with its notes.
