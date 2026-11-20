@@ -19,7 +19,7 @@ Not yet confirmed in real use:
 - Resume carrying on a real conversation, and bringing a to-do back onto the resumed session's card. The unit tests cover the to-do part.
 - Hearing an actual ding. The tests recorded the tones; no audio was played.
 - The theme setting, Todo filter and notification list (2026-11-19). Tested in headless Edge, where the list's clearing rules were run against simulated status changes. A real agent's change hasn't been seen to add or clear an entry yet.
-- Releases (2026-11-19). v0.1.1 was the Release workflow's first run. Its draft was checked before publishing: the zip matched its checksum and the tag file by file, its bundled server answered on every endpoint, and its launcher, built on GitHub, started a server. CI passes on Windows, macOS and Linux with Node 18 and 24. Not yet tried: the launcher from a zip downloaded through a browser, so SmartScreen's reaction to the unsigned launcher is unknown.
+- Releases (2026-11-19). v0.1.1 was the Release workflow's first run. Its draft was checked before publishing: the zip matched its checksum and the tag file by file, its bundled server answered on every endpoint, and its launcher, built on GitHub, started a server. CI passes on Windows, macOS and Linux with Node 18 and 24. Downloaded through a browser, the zip got no download warning, but the launcher got SmartScreen's warning when run, as the README describes.
 
 ## Public (2026-11-19)
 
@@ -40,7 +40,7 @@ GitHub attaches check results to commits, not pull requests. A failed Gitflow ch
 Also applied: `develop` as the default branch, merge commits only, merged branches deleted, and private vulnerability reporting. Reviews come from `.github/CODEOWNERS`, which names only the owner's GitHub handle so far. That handle is also in the repository's URL.
 
 Still to do:
-- Code-signing the launcher would stop the SmartScreen warning. It needs a certificate, such as Azure Trusted Signing.
+- Code-signing the launcher. It wouldn't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads. SignPath Foundation signs open-source projects for free, as the publisher, so no personal name goes on the certificate.
 - macOS and Linux need their own ways to open a terminal tab, find a window and pick a folder before they get releases.
 
 ## Known limits
