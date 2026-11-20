@@ -2,6 +2,11 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
+## Unreleased
+
+- History no longer lists sessions closed before Claude was asked anything. Claude saves no conversation for them, so Resume opened a tab that closed straight away.
+- A to-do whose session closes unused comes back to its own card, ready to start again, rather than disappearing with its notes.
+
 ## 0.1.1 - 2026-11-19
 
 The first release built by the release workflow on GitHub rather than by hand. The dashboard itself is the same as in 0.1.0.

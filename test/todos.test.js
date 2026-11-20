@@ -36,15 +36,15 @@ test('a started to-do follows its session until it closes, and comes back on res
   assert.equal(todos.pending(startedAt + 1000)[0].starting, true);
   assert.equal(todos.pending(startedAt + 61000)[0].starting, false, 'stops waiting after a minute');
 
-  // The session appears: the to-do moves onto its card.
-  let agents = [{ id: ID1, pid: 42, startedAt: 500 }];
+  // The session appears and is asked something: the to-do moves onto its card.
+  let agents = [{ id: ID1, pid: 42, startedAt: 500, prompts: 1 }];
   todos.observe(agents, 1000);
   assert.equal(agents[0].todo.title, 'Ship it');
   assert.equal(todos.pending(1000).length, 0);
   assert.ok(todos.isLive(id));
 
   // /clear gives the same process a new session ID.
-  agents = [{ id: ID2, pid: 42, startedAt: 500 }];
+  agents = [{ id: ID2, pid: 42, startedAt: 500, prompts: 1 }];
   todos.observe(agents, 2000);
   assert.ok(agents[0].todo);
   assert.equal(todos.find(id).sessionId, ID2);
@@ -58,7 +58,7 @@ test('a started to-do follows its session until it closes, and comes back on res
   assert.equal(todos.pending(3000).length, 0, 'a closed to-do has no card');
 
   // Resumed, with the same session ID in a new process.
-  agents = [{ id: ID2, pid: 77, startedAt: 4000 }];
+  agents = [{ id: ID2, pid: 77, startedAt: 4000, prompts: 1 }];
   todos.observe(agents, 4000);
   assert.ok(agents[0].todo);
   assert.equal(todos.find(id).closedAt, null);
@@ -67,6 +67,23 @@ test('a started to-do follows its session until it closes, and comes back on res
   todos.observe([], 5000);
   todos.observe([], 5000 + 31 * 24 * 60 * 60 * 1000);
   assert.equal(todos.find(id), null);
+});
+
+test('a session closed before it was asked anything gives its to-do back', () => {
+  const { todo } = todos.create({ title: 'Not yet' });
+  todos.setFolder(todo.id, os.tmpdir());
+  todos.started(todo.id, '44444444-4444-4444-8444-444444444444');
+  const agents = [{ id: '44444444-4444-4444-8444-444444444444', pid: 90, startedAt: 6000, prompts: 0 }];
+  todos.observe(agents, 6000);
+  assert.ok(agents[0].todo, 'it hands over as usual');
+  assert.equal(todos.pending(6000).some((t) => t.id === todo.id), false);
+
+  todos.observe([], 7000);
+  const back = todos.pending(7000).find((t) => t.id === todo.id);
+  assert.ok(back, 'it has its own card again');
+  assert.equal(back.cwd, os.tmpdir(), 'with its folder kept');
+  assert.equal(back.startedAt, null, 'ready to start, not "no session yet"');
+  assert.equal(todos.find(todo.id).closedAt, null);
 });
 
 test('to-dos are saved to disk', () => {
