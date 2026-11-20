@@ -2,6 +2,11 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
+## Unreleased
+
+- The launcher's file details show its product name, Claude Agents, and version.
+- Releases are ready to be signed through SignPath Foundation, once the project is approved. The README has the code signing policy, and how to uninstall.
+
 ## 0.1.2 - 2026-11-20
 
 - History no longer lists sessions closed before Claude was asked anything. Claude saves no conversation for them, so Resume opened a tab that closed straight away.

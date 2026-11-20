@@ -1,6 +1,7 @@
 # Built by `npm run install-shortcut`; machine-specific.
 launcher/ClaudeAgents.exe
 launcher/app.ico
+launcher/VersionInfo.cs
 launcher/node-path.txt
 # Built by `npm run build`.
 dist/
