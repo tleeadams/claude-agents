@@ -41,14 +41,34 @@ The launcher is a small C# program (`launcher/Tabherd.cs`), compiled with the C#
 
 ## Platform support
 
-| | Windows | macOS, Linux |
-| --- | --- | --- |
-| Session cards, statuses, filters, sounds, notifications, history, settings | Yes | Yes, from source |
-| Go to window, Catch up, terminal tab titles | Yes, with Windows Terminal | Not yet |
-| Opening Claude from the repo menu, Resume and to-dos | Yes, in Windows Terminal | Not yet |
-| Desktop launcher and release download | Yes | Not yet |
+The dashboard itself (session cards, statuses, filters, sounds, notifications, history, to-dos and settings) is plain Node and runs the same on Windows, macOS and Linux. What differs is driving terminals: **Go to window**, **Catch up**, tab titles on the cards, and opening Claude from the repo menu, Resume and to-dos. Each terminal app offers different controls:
 
-The parts that aren't on macOS and Linux yet are the ones that drive terminal windows. The rest is plain Node and runs the same everywhere.
+| Terminal | Opens Claude in | Go to window | Catch up | Tab titles |
+| --- | --- | --- | --- | --- |
+| Windows Terminal | a tab | the exact tab | yes | yes |
+| macOS Terminal | a window | the exact tab | yes | partly |
+| iTerm2 | a tab | the exact tab | yes | yes |
+| Ghostty, macOS (1.4+) | a tab | the exact tab | yes | yes |
+| Ghostty, Linux | a tab (1.4+) or window | the exact tab (1.4+) | in tmux | in tmux |
+| kitty | a tab | the exact tab | yes | yes |
+| WezTerm | a tab | the exact tab | yes | yes |
+| GNOME Terminal | a tab | the exact tab | in tmux | yes |
+| Ptyxis | a tab | the window | in tmux | in tmux |
+| Konsole | a tab | the exact tab | yes | in tmux |
+| tmux, in any terminal | a window | the exact pane | yes | yes |
+
+"In tmux" means it works when the session runs inside tmux, whatever the terminal. A few need a setting first:
+
+- **macOS**: the first time Tabherd drives Terminal, iTerm2 or Ghostty, macOS asks whether to allow it, naming the app Tabherd was started from. If it was refused, turn it on in System Settings › Privacy & Security › Automation. Terminal can't open a tab from a script, so it opens a window.
+- **kitty**: remote control is off until `kitty.conf` has `allow_remote_control socket-only` and `listen_on unix:/tmp/kitty`, and kitty is restarted.
+- **Konsole 25.12 and later** block typing into tabs until Configure Konsole › General › *Enable the security sensitive parts of the DBus API* is on.
+- **Linux on Wayland**: GNOME doesn't let one app bring another's window forward, so Go to window switches to the tab and GNOME shows that the window is ready. KDE brings it forward.
+
+Settings › New sessions › **Terminal** chooses where Claude opens; *Automatic* uses one this computer has. `npm run check-terminals` checks every terminal found on this computer with a stand-in session, not Claude, and prints what works.
+
+Windows Terminal, tmux, kitty, WezTerm, GNOME Terminal and Konsole have been checked that way, on Windows and Ubuntu 24.04. The macOS terminals, Ghostty and Ptyxis are built from their documentation and haven't been checked on a real machine yet.
+
+Releases with the launcher are Windows-only so far. On macOS and Linux, run it from source.
 
 ## What it shows
 
@@ -60,14 +80,14 @@ The parts that aren't on macOS and Linux yet are the ones that drive terminal wi
 
 The filters in the header show every session, or only those in one state. **Todo** shows *Needs you* and *Idle* together, along with the to-do cards: everything whose turn it is. *Shell running* counts as Working, not Todo.
 
-## To-dos (Windows)
+## To-dos
 
 **+ To-do** in the header adds a card with a title and notes, for work you want to give Claude later. To-do cards sit at the top of the grid, with a dashed border, and count under All and Todo. Ctrl+Enter saves from the notes box.
 
-**Start** opens a Windows Terminal tab in the to-do's folder running `claude --session-id <new id>`. With no folder chosen yet, it asks for one first; **Choose folder** sets one without starting. Settings → To-dos says where the folder comes from:
+**Start** opens Claude in the to-do's folder, in your terminal, running `claude --session-id <new id>`. With no folder chosen yet, it asks for one first; **Choose folder** sets one without starting. Settings → To-dos says where the folder comes from:
 
 - **Repo menu** (the default): the ☰ menu opens for choosing. Click a repo.
-- **Any folder**: Windows' folder picker, which the server opens in front of the dashboard.
+- **Any folder**: the system's folder picker (zenity or kdialog on Linux), which the server opens in front of the dashboard.
 
 **Start in** is the folder either one opens at.
 
@@ -79,9 +99,9 @@ When the session closes, the to-do goes too. Its title and notes stay with the s
 
 The gear button in the header opens Settings.
 
-**New sessions**: *Skip permission prompts* (off by default) makes every session the dashboard opens, from the repo menu, Resume or a to-do, run `claude --dangerously-skip-permissions`. Claude then edits files and runs commands without asking first. Only turn it on if you'd run Claude that way yourself in those folders.
+**New sessions**: *Skip permission prompts* (off by default) makes every session the dashboard opens, from the repo menu, Resume or a to-do, run `claude --dangerously-skip-permissions`. Claude then edits files and runs commands without asking first. Only turn it on if you'd run Claude that way yourself in those folders. *Terminal* chooses which terminal they open in, where there's more than one; see [Platform support](#platform-support).
 
-**Theme**: *System* (the default) follows Windows' light or dark mode. *Light* or *Dark* sets one regardless.
+**Theme**: *System* (the default) follows the system's light or dark mode. *Light* or *Dark* sets one regardless.
 
 **Card size** sets how the cards are laid out:
 
@@ -90,17 +110,17 @@ The gear button in the header opens Settings.
 
 **Notifications**: *Keep the list after a reload* (on by default) saves the notification list, so reloading or reopening the dashboard keeps it.
 
-**To-dos**: where a to-do's folder is chosen from (the repo menu or any folder), and the folder that choice starts at. See [To-dos](#to-dos-windows).
+**To-dos**: where a to-do's folder is chosen from (the repo menu or any folder), and the folder that choice starts at. See [To-dos](#to-dos).
 
 **Repo menu**: every folder and repo under the repos folder, nested as in the ☰ menu, each with a tick box. Untick one to hide it, and everything inside it, from the menu. What's inside a hidden folder is greyed out but keeps its own setting, so ticking the folder again brings back exactly what was shown before. A folder with some repos hidden says how many, in amber. The filter box works like the menu's. A hidden path that's no longer in the repos folder is listed underneath, with ✕ to remove it.
 
 Theme, Card size and Notifications are saved in the browser, so each browser profile remembers its own choice. The rest are saved by the server, in `~/.tabherd/settings.json`, so every browser shares them.
 
-## Catch up (Windows)
+## Catch up
 
 **Catch up** goes to the session's window and asks: *"Catch me up: where do things stand? Briefly cover what's done, what's in progress, and anything you need from me."* Set `CATCH_UP_PROMPT` to change the wording. The server holds the prompt, so the API can't be used to type anything else into an agent.
 
-The keystrokes go straight into that session's console input, never to whichever window has focus, so they can't land in the wrong place. Enter is sent on its own a moment after the text, so Claude Code submits the prompt rather than treating it as a pasted newline. If the session is busy, Claude Code queues the question until its current step finishes.
+The keystrokes go to that session only, never to whichever window has focus, so they can't land in the wrong place. On Windows they go straight into the session's console input, with Enter sent on its own a moment after the text. On macOS and Linux the terminal's own scripting, or tmux, types into the session's tab: the prompt is marked as a paste and Enter follows it. Either way Claude Code submits the prompt rather than treating Enter as part of a paste. If the session is busy, Claude Code queues the question until its current step finishes.
 
 Catch up is disabled while a session is waiting on a permission prompt or dialog, where typing and Enter could answer it. The script checks the session's status again just before typing. If you've half-typed something in that session's prompt box, the question is added to the end of it and sent with it.
 
@@ -121,37 +141,39 @@ The server pushes each update to open dashboards (`/api/stream`, server-sent eve
 
 ## History
 
-The clock button in the header lists sessions that have closed, newest first and grouped by day. Each entry has the session's name, folder, branch and last prompt, and a filter searches all of those. **Resume** opens a Windows Terminal tab in the session's folder running `claude --resume <id>`, so the conversation carries on where it stopped. **Copy resume command** copies a command that does the same, for running yourself.
+The clock button in the header lists sessions that have closed, newest first and grouped by day. Each entry has the session's name, folder, branch and last prompt, and a filter searches all of those. **Resume** opens Claude in the session's folder, in your terminal, running `claude --resume <id>`, so the conversation carries on where it stopped. **Copy resume command** copies a command that does the same, for running yourself.
 
 The server records a session when it drops off the dashboard, keeping its terminal tab's title and session name. Sessions that closed while the server wasn't running, or while no dashboard was open, are read from their transcripts in `~/.claude/projects`, going back 30 days. Those show Claude's title for the session, or its first prompt, rather than the tab's title. Each transcript is read once and again only if it changes, so after the first scan (about a second for 300 MB of transcripts) opening History is quick. Only interactive sessions are listed, not `claude -p` or SDK runs. Nor are sessions closed before Claude was asked anything: Claude saves no conversation for those, so there's nothing to resume. A session that's running again, because it was resumed, leaves the list until it closes. The history keeps the latest 300 sessions, in `~/.tabherd/history.json`.
 
-## Repo menu (Windows)
+## Repo menu
 
 The ☰ button at the top left lists the git repos under `~/source` (set `REPOS_DIR` to change it) as a folder tree, e.g. work → acme → api. Any folder with a `.git` entry counts, worktrees included. Each folder shows how many repos it holds, and a green dot marks repos that already have a Claude session running. Folders hidden in Settings, and everything inside them, are left out, and the menu's heading says how many are hidden. Folders you open stay open next time. Typing in the filter keeps repos whose path contains every word and whose name contains at least one. Enter opens the repo when only one matches. `http://localhost:4317/#repos/<filter>` opens the menu already filtered.
 
-Clicking a repo opens a tab in your most recent Windows Terminal window with:
+Clicking a repo opens Claude there, in your terminal. On macOS and Linux the new tab runs `cd <repo> && claude` in your login shell, which stays open after Claude exits. On Windows it's a tab in your most recent Windows Terminal window:
 
 ```
 wt -w 0 new-tab -p <your default profile> -d <repo> pwsh -NoExit -EncodedCommand <claude>
 ```
 
-With *Skip permission prompts* on in Settings, the command is `claude --dangerously-skip-permissions`. Claude runs inside pwsh, so when you quit Claude the tab stays open at a prompt in the repo. The server only opens folders from its own scan, from Windows' folder picker for a to-do, or for Resume from its own history, never a path sent by the page.
+With *Skip permission prompts* on in Settings, the command is `claude --dangerously-skip-permissions`. Claude runs inside pwsh, so when you quit Claude the tab stays open at a prompt in the repo. The server only opens folders from its own scan, from the folder picker for a to-do, or for Resume from its own history, never a path sent by the page.
 
 The tab uses your default Windows Terminal profile on purpose. If `profiles.defaults` sets `"elevate": true` and a tab is opened with just a command line, the tab gets that default. Windows Terminal then opens it in a separate administrator instance and mangles the command on the way. Naming the default profile gives the tab the same settings as a new tab you open yourself. The command is base64-encoded so Windows Terminal can't split it or read its flags as its own.
 
-## Terminal titles (Windows)
+## Terminal titles
 
-Each card is headed with what the session's terminal tab shows. For a tab you haven't renamed, that's the session's own title without the spinner glyph. For a renamed tab ("API - auth"), it's your name for the tab. A background PowerShell worker (`lib/terminal-titles.ps1`) checks every few seconds while the dashboard is open.
+Each card is headed with what the session's terminal tab shows. For a tab you haven't renamed, that's the session's own title without the spinner glyph. For a renamed tab ("API - auth"), it's your name for the tab. Titles are read every few seconds while the dashboard is open: on Windows by a background PowerShell worker (`lib/terminals/windows-titles.ps1`), on macOS and Linux from the terminal or tmux.
 
-A renamed tab hides the session's title, so Windows Terminal only reveals which session it holds while it's the selected tab. The dashboard learns each one when you view that tab or use Go to window, or by elimination once it's the only unmatched tab in its window. Until then the card shows Claude's title. It never switches tabs to find out. The Claude session name (e.g. `api-server-3d`) moves to the line with the PID.
+In Windows Terminal, a renamed tab hides the session's title, so it only reveals which session it holds while it's the selected tab. The dashboard learns each one when you view that tab or use Go to window, or by elimination once it's the only unmatched tab in its window. Until then the card shows Claude's title. It never switches tabs to find out. The Claude session name (e.g. `api-server-3d`) moves to the line with the PID.
 
-## Go to window (Windows)
+## Go to window
 
-`lib/focus-window.ps1` attaches to the session's console. The owner of the console window shows which Windows Terminal window hosts it, and the console title is the session's title. UI Automation then finds the tab whose name matches. A tab you renamed hides the session's title, so for those it steps through the window's tabs until a pane shows that title, then focuses the pane. For other hosts, such as VS Code or a classic console, it brings up the hosting app's window.
+On macOS and Linux, the session's terminal device and its parent processes show which terminal it runs in, or that it's inside tmux, and that terminal's scripting selects the tab (`lib/terminals/`). In tmux, tmux selects the pane, and the terminal showing tmux comes forward.
 
-Run `powershell -File lib/focus-window.ps1 -TargetPid <pid> -DryRun` to see how a session would be found without switching anything.
+On Windows, `lib/terminals/windows-focus.ps1` attaches to the session's console. The owner of the console window shows which Windows Terminal window hosts it, and the console title is the session's title. UI Automation then finds the tab whose name matches. A tab you renamed hides the session's title, so for those it steps through the window's tabs until a pane shows that title, then focuses the pane. For other hosts, such as VS Code or a classic console, it brings up the hosting app's window.
 
-Start the server from a normal terminal. If it's started from a sandboxed shell, such as Claude Code's Bash sandbox, Windows blocks it from switching other windows.
+Run `powershell -File lib/terminals/windows-focus.ps1 -TargetPid <pid> -DryRun` to see how a session would be found without switching anything.
+
+Start the server from a normal terminal. If it's started from a sandboxed shell, such as Claude Code's Bash sandbox, the system may block it from switching other windows.
 
 ## Where the data comes from
 
@@ -170,7 +192,7 @@ The only files the server writes are its own, in `~/.tabherd`: `settings.json` h
 
 ## Safety
 
-The server listens on `127.0.0.1` only and rejects requests with any other `Host` header, so other web pages can't read your prompts through DNS rebinding. The session actions, opening a repo, resuming a closed session, the to-do actions and saving settings all need a per-run token that only the served page has. A to-do's title reaches the folder picker only as an environment variable, never as part of a command. The session actions also work only on a session that is currently verified as live. **Stop** runs `taskkill /T /F` on the session and its child processes, after you confirm. Sessions the dashboard opens ask before acting, as Claude Code does by default, unless you turn on *Skip permission prompts*.
+The server listens on `127.0.0.1` only and rejects requests with any other `Host` header, so other web pages can't read your prompts through DNS rebinding. The session actions, opening a repo, resuming a closed session, the to-do actions and saving settings all need a per-run token that only the served page has. A to-do's title reaches the folder picker only as an environment variable, never as part of a command. The session actions also work only on a session that is currently verified as live. **Stop** ends the session and its child processes, after you confirm: `taskkill /T /F` on Windows; on macOS and Linux, SIGTERM and then SIGKILL two seconds later for any still running. Sessions the dashboard opens ask before acting, as Claude Code does by default, unless you turn on *Skip permission prompts*.
 
 To report a security problem, see [SECURITY.md](SECURITY.md).
 
@@ -180,6 +202,7 @@ To report a security problem, see [SECURITY.md](SECURITY.md).
 npm run setup      # once after cloning: turn on the git hooks for the branch rules
 npm test           # the tests, with Node's built-in test runner
 npm run build      # build the release zip for this platform into dist/
+npm run check-terminals   # check driving each terminal here, with a stand-in session
 ```
 
 There are no dependencies to install. CI runs the tests on Windows, macOS and Linux, with Node 18 and 24, and builds the Windows zip, on every pull request and every push to `main` and `develop`. [NOTES.md](NOTES.md) has working notes: what's planned, what isn't confirmed yet, and the Windows quirks found along the way.

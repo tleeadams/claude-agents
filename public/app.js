@@ -1272,6 +1272,8 @@ radioSetting('card-size', ['fit', 'small', 'medium', 'large'], (size) => {
 // Folders and repos left out of the repo menu. The server keeps these, for
 // every browser, as paths under the repos folder with forward slashes.
 let serverSettings = null;
+// The terminals this computer offers for new sessions: [{ id, name, available }].
+let terminalChoices = [];
 
 const repoSep = () => (repoData?.root.includes('\\') ? '\\' : '/');
 const showRepoPath = (p) => p.replace(/\//g, repoSep());
@@ -1434,12 +1436,29 @@ async function loadServerSettings() {
   try {
     const res = await fetch('/api/settings', { cache: 'no-store' });
     if (!res.ok) throw new Error(`Couldn't load settings (HTTP ${res.status})`);
-    serverSettings = (await res.json()).settings;
+    const data = await res.json();
+    serverSettings = data.settings;
+    terminalChoices = data.terminals || [];
     renderExcluded();
     renderServerSettings();
   } catch (err) {
     toast(err.message, true);
   }
+}
+
+// Shown only where there's a choice to make. A terminal that isn't found here
+// stays listed, so a choice made before it was removed still shows.
+function renderTerminalChoice() {
+  const select = $('terminal-choice');
+  $('terminal-setting').hidden = terminalChoices.length < 2;
+  const current = serverSettings?.terminal || 'auto';
+  select.replaceChildren(
+    el('option', { value: 'auto', text: 'Automatic' }),
+    ...terminalChoices.map((t) =>
+      el('option', { value: t.id, text: t.available ? t.name : `${t.name} (not found)`, disabled: !t.available && t.id !== current }),
+    ),
+  );
+  select.value = current;
 }
 
 // The settings kept on the server, other than the repo menu's. The to-do
@@ -1451,6 +1470,7 @@ function renderServerSettings() {
   const input = $('todo-start');
   if (repoData) input.placeholder = shortPath(repoData.root);
   if (document.activeElement !== input) input.value = shortPath(serverSettings?.todoStartFolder || '');
+  renderTerminalChoice();
 }
 
 async function saveServerSetting(changes) {
@@ -1467,6 +1487,7 @@ async function saveServerSetting(changes) {
 }
 
 $('skip-permissions').addEventListener('change', (e) => saveServerSetting({ skipPermissions: e.currentTarget.checked }));
+$('terminal-choice').addEventListener('change', (e) => saveServerSetting({ terminal: e.currentTarget.value }));
 for (const r of document.querySelectorAll('input[name="todo-source"]')) {
   r.addEventListener('change', () => saveServerSetting({ todoFolderSource: r.value }));
 }
