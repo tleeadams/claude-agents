@@ -66,7 +66,7 @@ The dashboard itself (session cards, statuses, filters, sounds, notifications, h
 
 Settings › New sessions › **Terminal** chooses where Claude opens; *Automatic* uses one this computer has. `npm run check-terminals` checks every terminal found on this computer with a stand-in session, not Claude, and prints what works.
 
-Windows Terminal, tmux, kitty, WezTerm, GNOME Terminal and Konsole have been checked that way, on Windows and Ubuntu 24.04. The macOS terminals, Ghostty and Ptyxis are built from their documentation and haven't been checked on a real machine yet.
+Checked that way so far: Windows Terminal; tmux, kitty, WezTerm, GNOME Terminal and Konsole on Ubuntu 24.04; and Terminal, iTerm2, Ghostty and tmux on macOS, where a workflow repeats the check whenever the drivers change. Not yet checked: kitty and WezTerm on macOS, and Ghostty and Ptyxis on Linux.
 
 Releases with the launcher are Windows-only so far. On macOS and Linux, run it from source.
 

@@ -4,6 +4,10 @@ name: macOS terminals
 # `npm run check-terminals` does on a Mac: opening a tab, going to it, reading
 # its title, Catch up and Stop. Runs when the terminal drivers change, or by
 # hand from the Actions tab.
+#
+# kitty and WezTerm aren't checked here: they need OpenGL, which the runner's
+# virtual machine doesn't have, so neither can open a window. They're checked
+# on Linux, and on a real Mac with `npm run check-terminals`.
 on:
   workflow_dispatch:
   pull_request:
@@ -24,26 +28,22 @@ jobs:
       - name: Install the terminals
         run: |
           brew install tmux >/dev/null
-          brew install --cask iterm2 ghostty kitty wezterm >/dev/null
-          # A Mac in use knows its apps; a fresh runner hasn't indexed them,
-          # and AppleScript finds apps through that index.
-          # They're also marked as downloaded, so macOS would ask before each
-          # first launch, with nobody to answer; a Mac in use has been asked.
+          brew install --cask iterm2 ghostty >/dev/null
+          # A Mac in use knows its apps and has asked before their first
+          # launch. A fresh runner hasn't: AppleScript finds apps through
+          # macOS's index, and macOS would ask, with nobody to answer.
           lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-          for app in iTerm Ghostty kitty WezTerm; do
+          for app in iTerm Ghostty; do
             xattr -dr com.apple.quarantine "/Applications/$app.app" 2>/dev/null || true
             "$lsregister" -f "/Applications/$app.app"
           done
-          # kitty's remote control, as the README says to turn it on.
-          mkdir -p ~/.config/kitty
-          printf 'allow_remote_control socket-only\nlisten_on unix:/tmp/kitty\n' > ~/.config/kitty/kitty.conf
       - name: Allow driving them
         # On a Mac, macOS asks once whether to allow it. Here nobody can
         # answer, so it's allowed up front for the runner's agent, which
         # macOS holds responsible for the step's processes.
         run: |
           db="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
-          for target in com.apple.Terminal com.googlecode.iterm2 com.mitchellh.ghostty com.apple.systemevents; do
+          for target in com.apple.Terminal com.googlecode.iterm2 com.mitchellh.ghostty; do
             sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier_type, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAppleEvents', '/opt/hca/hosted-compute-agent', 1, 2, 3, 1, 0, '$target', 0, CAST(strftime('%s','now') AS INTEGER));"
           done
           killall tccd 2>/dev/null || true
@@ -53,21 +53,14 @@ jobs:
         run: |
           open -a Terminal && sleep 5
           osascript -e 'tell application "Terminal" to do script "tmux new-session -A -s main"'
-          for app in iTerm Ghostty kitty WezTerm; do open -a "$app" || echo "couldn't start $app"; done
+          open -a iTerm && open -a Ghostty
           sleep 10
-          ps -A -o comm= | grep -E 'iTerm2|ghostty|kitty|wezterm-gui|tmux' | sort -u
-          echo "--- kitty, started directly:"
-          (/Applications/kitty.app/Contents/MacOS/kitty > /tmp/kitty.log 2>&1 &) ; sleep 5; tail -5 /tmp/kitty.log
-          echo "--- WezTerm, started directly:"
-          (/Applications/WezTerm.app/Contents/MacOS/wezterm-gui > /tmp/wezterm.log 2>&1 &) ; sleep 5; tail -5 /tmp/wezterm.log
-          ps -A -o comm= | grep -E 'kitty|wezterm-gui' | sort -u || echo "neither is running"
       - name: Check every terminal
         timeout-minutes: 15
         env:
           TABHERD_DEBUG: '1'
         run: |
           node scripts/check-terminals.js terminal iterm2 ghostty tmux | tee check.txt
-          # Every check should pass, except where a terminal can't do it.
           if grep -E '^  [a-zA-Z]+ +(no|opened|typed)' check.txt; then
             echo "::error::Not every check passed."
             exit 1
