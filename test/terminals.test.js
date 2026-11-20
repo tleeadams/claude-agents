@@ -94,6 +94,31 @@ test('in tmux, tmux types, and the terminal showing tmux comes forward', async (
   assert.deepEqual(term.calls, [['focus', '/dev/pts/7']], 'the outer terminal, found through the tmux client');
 });
 
+test("a terminal started from another one is the session's terminal, not the outer one", async () => {
+  // kitty (11), opened from a shell in the fake terminal (10), runs the session (30).
+  const table = new Map([
+    [1, { pid: 1, ppid: 0, tty: null, name: 'init' }],
+    [10, { pid: 10, ppid: 1, tty: null, name: 'fake-term' }],
+    [11, { pid: 11, ppid: 10, tty: null, name: 'kitty' }],
+    [20, { pid: 20, ppid: 11, tty: '/dev/pts/8', name: 'bash' }],
+    [30, { pid: 30, ppid: 20, tty: '/dev/pts/8', name: 'node' }],
+  ]);
+  const outer = fakeTerminal({ processNames: ['fake-term'] });
+  const inner = fakeTerminal({ id: 'kitty', name: 'kitty', processNames: ['kitty'], hosts: () => false });
+  const d = create({
+    name: 'test',
+    backends: [outer, inner],
+    openFolder: () => {},
+    pickFolder: async () => ({ ok: true }),
+    defaultTerminal: async () => 'fake',
+    processTable: async () => table,
+    environment: () => ({ OUTER_TERMINAL_VAR: 'inherited' }),
+    tmux: NO_TMUX,
+  });
+  assert.equal((await d.focus(30)).terminal, 'kitty');
+  assert.deepEqual(outer.calls, []);
+});
+
 test('new sessions open in the chosen terminal, or the default when it is missing', async () => {
   const term = fakeTerminal();
   const d = driver(term);

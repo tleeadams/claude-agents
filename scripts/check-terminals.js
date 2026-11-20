@@ -81,9 +81,12 @@ async function check(terminal) {
       const l = typedLines(config, pid);
       return l.some((x) => x.includes('<Enter>')) ? l : null;
     }, 3000) || typedLines(config, pid);
+    // Either Enter on its own after the text, or after the end of a marked
+    // paste: both submit the prompt in Claude Code.
     const text = lines.findIndex((x) => x.includes('tabherd check'));
     const enter = lines.findIndex((x) => x === '<Enter>');
     if (text >= 0 && enter > text) result.catchUp = 'yes';
+    else if (lines.some((x) => x.includes('tabherd check</paste><Enter>'))) result.catchUp = 'yes';
     else if (lines.some((x) => x.includes('tabherd check<Enter>'))) result.catchUp = 'typed, but with Enter in the same burst (Claude would take it as a paste)';
     else result.catchUp = `no: received ${JSON.stringify(lines)}`;
   }
