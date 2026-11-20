@@ -1,0 +1,34 @@
+name: macOS terminals
+
+# Drives Terminal on a macOS runner with a stand-in session, as
+# `npm run check-terminals` does on a Mac: opening a window, going to its tab,
+# reading its title, Catch up and Stop. Runs when the terminal drivers change,
+# or by hand from the Actions tab.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['lib/terminals/**', 'scripts/check-terminals.js', 'scripts/stand-in-session.js']
+  push:
+    branches: ['bugfix/macos-**']
+
+permissions:
+  contents: read
+
+jobs:
+  terminal:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - name: Check Terminal and tmux
+        run: |
+          brew list tmux >/dev/null 2>&1 || brew install tmux >/dev/null
+          node scripts/check-terminals.js terminal tmux | tee check.txt
+          # Every line for Terminal should say yes.
+          if awk '/^Terminal:/{t=1;next} /^[A-Za-z]/{t=0} t && $2 != "yes" && $2 != "yes," {bad=1} END{exit !bad}' check.txt; then
+            echo "::error::Terminal didn't pass every check."
+            exit 1
+          fi
