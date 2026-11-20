@@ -27,8 +27,13 @@ jobs:
           brew install --cask iterm2 ghostty kitty wezterm >/dev/null
           # A Mac in use knows its apps; a fresh runner hasn't indexed them,
           # and AppleScript finds apps through that index.
+          # They're also marked as downloaded, so macOS would ask before each
+          # first launch, with nobody to answer; a Mac in use has been asked.
           lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-          for app in iTerm Ghostty kitty WezTerm; do "$lsregister" -f "/Applications/$app.app"; done
+          for app in iTerm Ghostty kitty WezTerm; do
+            xattr -dr com.apple.quarantine "/Applications/$app.app" 2>/dev/null || true
+            "$lsregister" -f "/Applications/$app.app"
+          done
           # kitty's remote control, as the README says to turn it on.
           mkdir -p ~/.config/kitty
           printf 'allow_remote_control socket-only\nlisten_on unix:/tmp/kitty\n' > ~/.config/kitty/kitty.conf
@@ -44,12 +49,15 @@ jobs:
           killall tccd 2>/dev/null || true
       - name: Start the terminals
         # Running, as they would be on a Mac in use; Terminal shows tmux.
+        timeout-minutes: 3
         run: |
           open -a Terminal && sleep 5
           osascript -e 'tell application "Terminal" to do script "tmux new-session -A -s main"'
-          open -a iTerm && open -a Ghostty && open -a kitty && open -a WezTerm
+          for app in iTerm Ghostty kitty WezTerm; do open -a "$app" || echo "couldn't start $app"; done
           sleep 10
+          ps -A -o comm= | grep -E 'iTerm2|ghostty|kitty|wezterm-gui|tmux' | sort -u
       - name: Check every terminal
+        timeout-minutes: 15
         env:
           TABHERD_DEBUG: '1'
         run: |
