@@ -10,7 +10,7 @@ process.env.TABHERD_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'tabherd-te
 const settings = require('../lib/settings');
 
 test('defaults are safe', () => {
-  assert.deepEqual(settings.get(), { skipPermissions: false, excludedFolders: [], todoFolderSource: 'repos', todoStartFolder: '' });
+  assert.deepEqual(settings.get(), { skipPermissions: false, excludedFolders: [], todoFolderSource: 'repos', todoStartFolder: '', terminal: 'auto' });
 });
 
 test('each setting is checked', () => {
@@ -21,6 +21,8 @@ test('each setting is checked', () => {
   assert.deepEqual(settings.update({ excludedFolders: ['a\\b', 'A/B/', 'c'] }).settings.excludedFolders, ['a/b', 'c']);
   assert.equal(settings.update({ excludedFolders: ['../up'] }).ok, false);
   assert.equal(settings.update({ ['__proto__']: 1 }).ok, false);
+  assert.equal(settings.update({ terminal: 'iterm2' }).settings.terminal, 'iterm2');
+  assert.equal(settings.update({ terminal: 'cmd.exe' }).ok, false);
 });
 
 test('the to-do start folder must exist', () => {

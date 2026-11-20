@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 'use strict';
 
-// Builds a release for the platform this runs on, in dist/: the app, its
-// launcher and Node in one folder, zipped, with a SHA-256 checksum and the
-// release notes for this version from CHANGELOG.md.
+// Builds a release in dist/: the app, its launcher and Node in one folder,
+// archived, with a SHA-256 checksum and the release notes for this version
+// from CHANGELOG.md.
 //
-//   node scripts/build-release.js                bundles the Node running this
-//   node scripts/build-release.js --node <path>  bundles that node executable
-//   node scripts/build-release.js --stage        builds the folder, not the zip
-//   node scripts/build-release.js --pack         zips the folder --stage built
+//   node scripts/build-release.js                     for this computer, with the Node running this
+//   node scripts/build-release.js --target <target>   for windows-x64, macos-arm64, macos-x64,
+//                                                     linux-x64 or linux-arm64
+//   node scripts/build-release.js --node <path>       bundles that node executable
+//   node scripts/build-release.js --download-node     bundles the latest Node of the major version
+//                                                     in .node-version, from nodejs.org, checked
+//                                                     against its published checksums
+//   node scripts/build-release.js --stage             builds the folder, not the archive
+//   node scripts/build-release.js --pack              archives the folder --stage built
 //
-// The release workflow builds the folder, has the launcher signed, puts it
-// back and then zips the folder.
-//
-// Only Windows is supported so far. Each platform is one entry in TARGETS.
+// The Windows release is built on Windows, which has the C# compiler its
+// launcher needs. The macOS and Linux ones have a shell script for a launcher,
+// so they're built on Linux or macOS, with Node downloaded for each. The
+// release workflow builds the Windows folder, has its launcher signed, puts it
+// back and then archives the folder.
 
 const fs = require('fs');
 const path = require('path');
@@ -26,39 +32,104 @@ const DIST = path.join(ROOT, 'dist');
 const { version } = require('../package.json');
 const MIN_NODE = 18;
 
-// What every release holds, whatever the platform. The launcher's and the
+// What every release holds, whatever the platform. The launchers' and the
 // build's source come too, as the GPL asks of anything shipped compiled.
-const APP_FILES = ['server.js', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'lib', 'public', 'launcher/Tabherd.cs', 'scripts'];
+const APP_FILES = ['server.js', 'package.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'lib', 'public', 'launcher/Tabherd.cs', 'launcher/tabherd.sh', 'scripts'];
 
-const TARGETS = {
-  win32: {
-    name: `windows-${process.arch}`,
-    build(stage, node) {
-      // Beside server.js, where the launcher looks for it.
-      buildLauncher(path.join(stage, 'Tabherd.exe'), path.join(DIST, 'app.ico'));
-      bundleNode(node, path.join(stage, 'node', 'node.exe'));
-      // Double-click versions of the launcher's --install and --uninstall.
-      fs.writeFileSync(path.join(stage, 'Install shortcuts.cmd'), '@"%~dp0Tabherd.exe" --install\r\n');
-      fs.writeFileSync(path.join(stage, 'Remove shortcuts.cmd'), '@"%~dp0Tabherd.exe" --uninstall\r\n');
-    },
-    // Windows' own tar (bsdtar) writes zips; Git's GNU tar, which may come
-    // first on the PATH, doesn't.
-    zip(stage, file) {
-      const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
-      execFileSync(tar, ['-a', '-c', '-f', file, '-C', path.dirname(stage), path.basename(stage)]);
-    },
+const windows = {
+  os: 'win32',
+  archive: 'zip',
+  build(stage, node) {
+    // Beside server.js, where the launcher looks for it.
+    buildLauncher(path.join(stage, 'Tabherd.exe'), path.join(DIST, 'app.ico'));
+    bundleNode(node, path.join(stage, 'node', 'node.exe'));
+    // Double-click versions of the launcher's --install and --uninstall.
+    fs.writeFileSync(path.join(stage, 'Install shortcuts.cmd'), '@"%~dp0Tabherd.exe" --install\r\n');
+    fs.writeFileSync(path.join(stage, 'Remove shortcuts.cmd'), '@"%~dp0Tabherd.exe" --uninstall\r\n');
   },
 };
 
-// Copies node with its licence, which has to travel with it.
-function bundleNode(from, to) {
-  const major = Number(execFileSync(from, ['-p', 'process.versions.node'], { encoding: 'utf8' }).split('.')[0]);
-  if (!(major >= MIN_NODE)) throw new Error(`${from} is Node ${major}; the app needs ${MIN_NODE} or later.`);
-  const license = path.join(path.dirname(from), 'LICENSE');
-  if (!fs.existsSync(license)) throw new Error(`Node's LICENSE isn't next to ${from}. Use a Node installed from nodejs.org.`);
+// macOS and Linux: the `tabherd` script, and Node in node/, laid out as
+// Node's own downloads are.
+const unix = (os) => ({
+  os,
+  archive: 'tar.gz',
+  build(stage, node) {
+    const script = path.join(stage, 'tabherd');
+    fs.copyFileSync(path.join(ROOT, 'launcher', 'tabherd.sh'), script);
+    fs.chmodSync(script, 0o755);
+    bundleNode(node, path.join(stage, 'node', 'bin', 'node'), path.join(stage, 'node', 'LICENSE'));
+  },
+});
+
+const TARGETS = {
+  'windows-x64': { ...windows, arch: 'x64' },
+  'macos-arm64': { ...unix('darwin'), arch: 'arm64' },
+  'macos-x64': { ...unix('darwin'), arch: 'x64' },
+  'linux-x64': { ...unix('linux'), arch: 'x64' },
+  'linux-arm64': { ...unix('linux'), arch: 'arm64' },
+};
+const OS_NAMES = { win32: 'windows', darwin: 'macos', linux: 'linux' };
+const hostTarget = () => `${OS_NAMES[process.platform]}-${process.arch}`;
+
+// Copies node with its licence, which has to travel with it. Node's licence
+// is beside node.exe on Windows, and a folder up from bin/node elsewhere.
+function bundleNode(from, to, licenseTo = path.join(path.dirname(to), 'LICENSE')) {
+  const license = [path.join(path.dirname(from), 'LICENSE'), path.join(path.dirname(from), '..', 'LICENSE')].find((f) => fs.existsSync(f));
+  if (!license) throw new Error(`Node's LICENSE isn't with ${from}. Use a Node from nodejs.org.`);
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(from, to);
-  fs.copyFileSync(license, path.join(path.dirname(to), 'LICENSE'));
+  fs.chmodSync(to, 0o755);
+  fs.copyFileSync(license, licenseTo);
+}
+
+// The version a bundled node reports, when it can run here.
+function checkNode(file) {
+  const major = Number(execFileSync(file, ['-p', 'process.versions.node'], { encoding: 'utf8' }).split('.')[0]);
+  if (!(major >= MIN_NODE)) throw new Error(`${file} is Node ${major}; the app needs ${MIN_NODE} or later.`);
+}
+
+const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex');
+
+async function fetchOk(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  return res;
+}
+
+// Downloads Node for a macOS or Linux target and checks it against the
+// checksums Node publishes. Resolves to the path of its bin/node.
+async function downloadNode(target) {
+  const major = fs.readFileSync(path.join(ROOT, '.node-version'), 'utf8').trim();
+  const index = await (await fetchOk('https://nodejs.org/dist/index.json')).json();
+  const release = index.find((r) => r.version.startsWith(`v${major}.`));
+  if (!release) throw new Error(`nodejs.org lists no Node ${major} release.`);
+  const base = `node-${release.version}-${target.os === 'darwin' ? 'darwin' : 'linux'}-${target.arch}`;
+  const dist = `https://nodejs.org/dist/${release.version}/`;
+  const sums = await (await fetchOk(`${dist}SHASUMS256.txt`)).text();
+  const expected = sums.split('\n').find((line) => line.endsWith(`  ${base}.tar.gz`))?.split(' ')[0];
+  if (!expected) throw new Error(`Node's checksums don't list ${base}.tar.gz.`);
+  const data = Buffer.from(await (await fetchOk(`${dist}${base}.tar.gz`)).arrayBuffer());
+  if (sha256(data) !== expected) throw new Error(`${base}.tar.gz doesn't match Node's published checksum.`);
+  const dir = path.join(DIST, 'node');
+  fs.mkdirSync(dir, { recursive: true });
+  const archive = path.join(dir, `${base}.tar.gz`);
+  fs.writeFileSync(archive, data);
+  execFileSync('tar', ['-xzf', archive, '-C', dir]);
+  console.log(`Node ${release.version} for ${target.os}-${target.arch}, checksum verified`);
+  return path.join(dir, base, 'bin', 'node');
+}
+
+function archive(target, stage, file) {
+  if (target.archive === 'zip') {
+    // Windows' own tar (bsdtar) writes zips; Git's GNU tar, which may come
+    // first on the PATH, doesn't.
+    const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+    execFileSync(tar, ['-a', '-c', '-f', file, '-C', path.dirname(stage), path.basename(stage)]);
+  } else {
+    // COPYFILE_DISABLE keeps macOS's tar from adding ._ files.
+    execFileSync('tar', ['-czf', file, '-C', path.dirname(stage), path.basename(stage)], { env: { ...process.env, COPYFILE_DISABLE: '1' } });
+  }
 }
 
 // The section of the changelog headed with this version. A Windows checkout
@@ -71,39 +142,52 @@ function releaseNotes(changelog, version) {
   return `${match[1].trim()}\n`;
 }
 
-function main() {
-  const target = TARGETS[process.platform];
-  if (!target) throw new Error(`Releases for ${process.platform} aren't supported yet. Run the app from source with "npm start".`);
+const option = (name) => {
+  const at = process.argv.indexOf(name);
+  return at > 0 ? process.argv[at + 1] || '' : null;
+};
+
+async function main() {
+  const targetName = option('--target') || hostTarget();
+  const target = TARGETS[targetName];
+  if (!target) throw new Error(`No release target ${targetName}. Targets: ${Object.keys(TARGETS).join(', ')}.`);
+  if (target.os === 'win32' && process.platform !== 'win32') throw new Error('The Windows release is built on Windows, for its C# compiler.');
+  if (target.os !== 'win32' && process.platform === 'win32') throw new Error('The macOS and Linux releases are built on macOS or Linux, which keep their files executable.');
   const notes = releaseNotes(fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8'), version);
-  const name = `tabherd-v${version}-${target.name}`;
-  const stage = path.join(DIST, name);
+  // The folder inside has no version in its name, so each release unpacks to
+  // the same folder, and paths to it, such as shortcuts and winget's, last.
+  const stage = path.join(DIST, `tabherd-${targetName}`);
+  const file = path.join(DIST, `tabherd-v${version}-${targetName}.${target.archive}`);
   const only = ['--stage', '--pack'].find((flag) => process.argv.includes(flag));
 
   if (only !== '--pack') {
-    const at = process.argv.indexOf('--node');
-    const node = at > 0 ? path.resolve(process.argv[at + 1] || '') : process.execPath;
-    fs.rmSync(DIST, { recursive: true, force: true });
+    // Only this target's files go, so several targets can be built in turn.
+    for (const old of [stage, file, `${file}.sha256`]) fs.rmSync(old, { recursive: true, force: true });
+    let node = option('--node') ? path.resolve(option('--node')) : null;
+    if (!node) {
+      const native = targetName === hostTarget() && !process.argv.includes('--download-node');
+      if (!native && target.os === 'win32') throw new Error('Give --node <path to node.exe> for another Windows target.');
+      node = native ? process.execPath : await downloadNode(target);
+    }
+    if (targetName === hostTarget()) checkNode(node);
     for (const rel of APP_FILES) fs.cpSync(path.join(ROOT, rel), path.join(stage, rel), { recursive: true });
     target.build(stage, node);
     if (only) return console.log(`Built ${path.relative(ROOT, stage)}`);
   }
   if (!fs.existsSync(stage)) throw new Error(`${path.relative(ROOT, stage)} isn't built. Run with --stage first.`);
 
-  const zip = path.join(DIST, `${name}.zip`);
-  target.zip(stage, zip);
-  const hash = crypto.createHash('sha256').update(fs.readFileSync(zip)).digest('hex');
-  fs.writeFileSync(`${zip}.sha256`, `${hash}  ${path.basename(zip)}\n`);
+  archive(target, stage, file);
+  const hash = sha256(fs.readFileSync(file));
+  fs.writeFileSync(`${file}.sha256`, `${hash}  ${path.basename(file)}\n`);
   fs.writeFileSync(path.join(DIST, 'RELEASE_NOTES.md'), notes);
-  console.log(`Built ${path.relative(ROOT, zip)} (${(fs.statSync(zip).size / 1048576).toFixed(1)} MB)\nSHA-256 ${hash}`);
+  console.log(`Built ${path.relative(ROOT, file)} (${(fs.statSync(file).size / 1048576).toFixed(1)} MB)\nSHA-256 ${hash}`);
 }
 
 if (require.main === module) {
-  try {
-    main();
-  } catch (err) {
+  main().catch((err) => {
     console.error(err.message);
     process.exit(1);
-  }
+  });
 }
 
-module.exports = { releaseNotes };
+module.exports = { releaseNotes, TARGETS };

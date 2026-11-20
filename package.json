@@ -1,6 +1,6 @@
 {
   "name": "tabherd",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A dashboard for your Claude Code sessions: which ones need you, which are working, and what they last said",
   "private": true,
   "main": "server.js",
@@ -16,7 +16,8 @@
     "test": "node --test",
     "build": "node scripts/build-release.js",
     "install-shortcut": "node scripts/install-shortcut.js",
-    "uninstall-shortcut": "node scripts/install-shortcut.js --uninstall"
+    "uninstall-shortcut": "node scripts/install-shortcut.js --uninstall",
+    "check-terminals": "node scripts/check-terminals.js"
   },
   "engines": {
     "node": ">=18"

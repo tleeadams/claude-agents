@@ -33,6 +33,9 @@ static class Launcher
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr CreateFile(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern uint GetFinalPathNameByHandle(IntPtr handle, StringBuilder path, uint size, uint flags);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
 
     [STAThread]
     static void Main(string[] args)
@@ -84,9 +87,34 @@ static class Launcher
     // source, it's in launcher\, one folder down.
     static string AppRoot()
     {
-        string here = AppDomain.CurrentDomain.BaseDirectory;
+        string here = Path.GetDirectoryName(ExePath());
         if (File.Exists(Path.Combine(here, "server.js"))) return here;
         return Path.GetFullPath(Path.Combine(here, ".."));
+    }
+
+    // This program's own file. winget runs a portable app through a link in
+    // its Links folder, and Windows then reports the link's path, so the link
+    // is followed to the real file.
+    static string ExePath()
+    {
+        string exe = Assembly.GetExecutingAssembly().Location;
+        // Any access, shared every way, open existing, as a directory or file.
+        IntPtr handle = CreateFile(exe, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
+        if (handle == new IntPtr(-1)) return exe;
+        try
+        {
+            var path = new StringBuilder(1024);
+            uint length = GetFinalPathNameByHandle(handle, path, (uint)path.Capacity, 0);
+            if (length == 0 || length >= path.Capacity) return exe;
+            string real = path.ToString();
+            if (real.StartsWith(@"\\?\UNC\")) return @"\\" + real.Substring(8);
+            if (real.StartsWith(@"\\?\")) return real.Substring(4);
+            return real;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
     }
 
     // The Node bundled with a release, else the Node that built this
@@ -109,7 +137,7 @@ static class Launcher
     // go. WScript.Shell is late-bound, so no interop assembly is needed.
     static string[] Shortcuts(bool create)
     {
-        string exe = Assembly.GetExecutingAssembly().Location;
+        string exe = ExePath();
         var changed = new System.Collections.Generic.List<string>();
         Type shellType = Type.GetTypeFromProgID("WScript.Shell");
         object shell = create ? Activator.CreateInstance(shellType) : null;

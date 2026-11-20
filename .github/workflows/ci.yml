@@ -20,6 +20,9 @@ jobs:
         os: [windows-latest, ubuntu-latest, macos-latest]
         node: [18, 24]
     runs-on: ${{ matrix.os }}
+    # The tests take under a minute. A runner that stops answering otherwise
+    # holds the check open for hours.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -28,10 +31,11 @@ jobs:
       - run: npm test
 
   build:
-    # Builds the release zip as a tagged release would, so a broken build
-    # shows up before release day. The zip is kept for a week to try out.
+    # Builds the Windows release zip as a tagged release would, so a broken
+    # build shows up before release day. The zip is kept for a week to try out.
     needs: test
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -44,13 +48,49 @@ jobs:
           path: dist/*.zip
           retention-days: 7
 
+  build-unix:
+    # Builds this system's macOS or Linux release, unpacks it and tries it:
+    # the launcher starts the dashboard, and --install and --uninstall work.
+    # On macOS, the installed Tabherd.app is opened too.
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - run: node scripts/build-release.js --download-node
+      - name: Try the release
+        env:
+          PORT: '4421'
+        run: |
+          mkdir try && tar -xzf dist/tabherd-v*.tar.gz -C try
+          cd try/tabherd-*
+          export TABHERD_DATA_DIR="$(mktemp -d)"
+          ./tabherd
+          for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT/" | grep -q '<title>Tabherd</title>' && break; sleep 1; done
+          curl -sf "http://127.0.0.1:$PORT/" | grep -q '<title>Tabherd</title>' || { echo "::error::The dashboard didn't start."; exit 1; }
+          ./tabherd --install
+          if [ "$RUNNER_OS" = macOS ]; then open "$HOME/Applications/Tabherd.app"; fi
+          ./tabherd --uninstall
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.os }}
+          path: dist/*.tar.gz
+          retention-days: 7
+
   all-passed:
     # The one check the rulesets require, so adding a job or an OS above
     # doesn't mean changing them. A job skipped because another failed would
     # count as passing, so this runs regardless and checks each result.
     name: All checks passed
     if: always()
-    needs: [test, build]
+    needs: [test, build, build-unix]
     runs-on: ubuntu-latest
     steps:
       - name: Check every job passed

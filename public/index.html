@@ -153,6 +153,13 @@
           <input type="checkbox" id="skip-permissions">
           <span class="choice-text"><b>Skip permission prompts</b><span>Sessions the dashboard opens run <code>claude --dangerously-skip-permissions</code>, so Claude edits files and runs commands without asking. Only for folders you trust.</span></span>
         </label>
+        <div id="terminal-setting" hidden>
+          <label class="field">
+            <span>Terminal</span>
+            <select id="terminal-choice"></select>
+          </label>
+          <p class="settings-help">Where the repo menu, Resume and to-dos open Claude. Automatic uses one this computer has.</p>
+        </div>
       </fieldset>
       <fieldset>
         <legend>To-dos</legend>
@@ -165,7 +172,7 @@
           <span>Start in</span>
           <input id="todo-start" type="text" autocomplete="off" spellcheck="false">
         </label>
-        <p class="settings-help">The repo menu opens at this folder, or Windows' folder picker starts in it. Leave it empty for the repos folder.</p>
+        <p class="settings-help">The repo menu opens at this folder, or the folder picker starts in it. Leave it empty for the repos folder.</p>
       </fieldset>
       <fieldset>
         <legend>Repo menu</legend>
