@@ -1,7 +1,7 @@
 'use strict';
 
 // Builds the Windows launcher: draws its icon from the same shapes as
-// public/favicon.svg, then compiles launcher/ClaudeAgents.cs with the C#
+// public/favicon.svg, then compiles launcher/Tabherd.cs with the C#
 // compiler that comes with Windows. Used by install-shortcut.js and
 // build-release.js.
 
@@ -10,7 +10,8 @@ const path = require('path');
 const zlib = require('zlib');
 const { execFileSync } = require('child_process');
 
-const SOURCE = path.join(__dirname, '..', 'launcher', 'ClaudeAgents.cs');
+const SOURCE = path.join(__dirname, '..', 'launcher', 'Tabherd.cs');
+const { version: VERSION } = require('../package.json');
 const CSC = path.join(process.env.WINDIR || 'C:\\Windows', 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe');
 const ICON_SIZES = [16, 20, 24, 32, 40, 48, 64, 256];
 
@@ -155,17 +156,37 @@ function icon(sizes) {
 
 // ---- build ---------------------------------------------------------------------
 
-// Writes the icon to `ico` and the program to `exe`.
+// The product name and version shown in the program's file details, which
+// code signing checks. File versions are numbers only, so a prerelease such as
+// 0.2.0-beta.1 is 0.2.0 there and in full only in the product version.
+function versionInfo(version) {
+  const numbers = version.split(/[-+]/)[0];
+  if (!/^\d+\.\d+\.\d+$/.test(numbers)) throw new Error(`Not a version: ${version}`);
+  return [
+    'using System.Reflection;',
+    '[assembly: AssemblyTitle("Tabherd")]',
+    '[assembly: AssemblyProduct("Tabherd")]',
+    `[assembly: AssemblyVersion("${numbers}.0")]`,
+    `[assembly: AssemblyFileVersion("${numbers}.0")]`,
+    `[assembly: AssemblyInformationalVersion("${version}")]`,
+    '',
+  ].join('\r\n');
+}
+
+// Writes the icon to `ico` and the program to `exe`, with the version info
+// beside the icon.
 function buildLauncher(exe, ico) {
   if (process.platform !== 'win32') throw new Error('The launcher can only be built on Windows.');
   if (!fs.existsSync(CSC)) throw new Error(`The C# compiler that comes with Windows wasn't found at ${CSC}.`);
   fs.mkdirSync(path.dirname(exe), { recursive: true });
   fs.writeFileSync(ico, icon(ICON_SIZES));
+  const info = path.join(path.dirname(ico), 'VersionInfo.cs');
+  fs.writeFileSync(info, versionInfo(VERSION));
   execFileSync(
     CSC,
-    ['/nologo', '/target:winexe', '/optimize+', `/win32icon:${ico}`, `/out:${exe}`, '/reference:System.Windows.Forms.dll', SOURCE],
+    ['/nologo', '/target:winexe', '/optimize+', `/win32icon:${ico}`, `/out:${exe}`, '/reference:System.Windows.Forms.dll', SOURCE, info],
     { stdio: 'inherit' },
   );
 }
 
-module.exports = { buildLauncher, draw, png };
+module.exports = { buildLauncher, versionInfo, draw, png };

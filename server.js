@@ -464,7 +464,7 @@ async function main() {
   });
   server.listen(PORT, HOST, () => {
     const url = `http://localhost:${PORT}`;
-    console.log(`Claude Agents dashboard: ${url}  (Ctrl+C to stop)`);
+    console.log(`Tabherd dashboard: ${url}  (Ctrl+C to stop)`);
     if (process.argv.includes('--open')) {
       if (IS_WIN) detached('cmd.exe', ['/c', 'start', '', url]);
       else detached(process.platform === 'darwin' ? 'open' : 'xdg-open', [url]);

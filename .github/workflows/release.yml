@@ -18,6 +18,10 @@ jobs:
         # scripts/build-release.js first; only Windows has one so far.
         os: [windows-latest]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      # For SignPath to fetch the unsigned launcher from this run.
+      actions: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -39,7 +43,43 @@ jobs:
             exit 1
           fi
       - run: npm test
-      - run: npm run build
+      - run: node scripts/build-release.js --stage
+      # The launcher is signed through SignPath Foundation once the
+      # SIGNPATH_ORGANIZATION_ID variable and SIGNPATH_API_TOKEN secret are
+      # set (see CONTRIBUTING.md); until then it ships unsigned. Only the
+      # launcher is sent: the bundled node.exe has the Node.js project's own
+      # signature. Each request waits for an approver on signpath.io.
+      - name: Upload the launcher for signing
+        id: unsigned
+        if: vars.SIGNPATH_ORGANIZATION_ID != '' && runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-launcher-${{ matrix.os }}
+          path: dist/*/Tabherd.exe
+          if-no-files-found: error
+      - name: Sign the launcher
+        if: steps.unsigned.outcome == 'success'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'tabherd' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          # Time for an approver to approve the request.
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist/signed
+      - name: Check the signature and put the signed launcher in the release
+        if: steps.unsigned.outcome == 'success'
+        shell: pwsh
+        run: |
+          $signed = Get-Item 'dist/signed/Tabherd.exe'
+          $signature = Get-AuthenticodeSignature $signed.FullName
+          if ($signature.Status -ne 'Valid') { throw "The signed launcher's signature is $($signature.Status): $($signature.StatusMessage)" }
+          "Signed by $($signature.SignerCertificate.Subject)"
+          Copy-Item $signed.FullName (Get-Item 'dist/tabherd-*/Tabherd.exe').FullName -Force
+          Remove-Item dist/signed -Recurse
+      - run: node scripts/build-release.js --pack
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.os }}
@@ -64,6 +104,8 @@ jobs:
         run: |
           prerelease=""
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          # SignPath Foundation asks for the policy on every download page.
+          printf '\n[Code signing policy](%s/%s#code-signing-policy)\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" >> dist/RELEASE_NOTES.md
           gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.zip.sha256 \
             --repo "$GITHUB_REPOSITORY" --draft $prerelease \
-            --title "Claude Agents $GITHUB_REF_NAME" --notes-file dist/RELEASE_NOTES.md
+            --title "Tabherd $GITHUB_REF_NAME" --notes-file dist/RELEASE_NOTES.md

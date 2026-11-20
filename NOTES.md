@@ -23,7 +23,9 @@ Not yet confirmed in real use:
 
 ## Public (2026-11-19)
 
-The repository is public, and v0.1.2 is the latest release. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
+The repository is public, and v0.2.0 is the latest release. It's licensed GPL-3.0-or-later, and *Skip permission prompts* is off unless chosen.
+
+Renamed from Claude Agents to Tabherd (2026-11-20). Anthropic's Claude Code terms don't allow its names in a product's name, and "Claude Agents" is close to "Claude Agent", Anthropic's own wording for products built on its Agent SDK. Searching for "claude agents" also brings up Anthropic's own docs first. "Tabherd" had no web results, and nothing on npm or GitHub of note. The description says what it works with: "a dashboard for your Claude Code sessions". The rename came before applying to SignPath, since the product name on a signed file must match the project.
 
 No identifying information goes in the code, docs or history, including real work examples: use made-up names such as `work/acme/api`. The first commit was rewritten to match. Commits made locally are by "Lee" with the GitHub no-reply address. Merges made on GitHub's website use the account's profile name, with the same no-reply address.
 
@@ -40,7 +42,7 @@ GitHub attaches check results to commits, not pull requests. A failed Gitflow ch
 Also applied: `develop` as the default branch, merge commits only, merged branches deleted, and private vulnerability reporting. Reviews come from `.github/CODEOWNERS`, which names only the owner's GitHub handle so far. That handle is also in the repository's URL.
 
 Still to do:
-- Code-signing the launcher. It wouldn't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads. SignPath Foundation signs open-source projects for free, as the publisher, so no personal name goes on the certificate.
+- Code-signing the launcher, through SignPath Foundation, which signs open-source projects for free as the publisher, so no personal name goes on the certificate. The Release workflow, the policy in the README and `.signpath/artifact-configuration.xml` are ready (2026-11-20). The signing steps haven't run yet: they need the project approved, then set up as in CONTRIBUTING.md. Signing won't stop the SmartScreen warning at once: since 2024 every signed file starts without reputation, EV certificates included, and earns it through downloads.
 - macOS and Linux need their own ways to open a terminal tab, find a window and pick a folder before they get releases.
 
 ## Known limits
@@ -78,7 +80,7 @@ In build order, smallest first. Items 1 to 3 only change the page. Items 4 to 6 
 ## Development notes
 
 - **After a server-side change**, stop the running `server.js` and start it through the Desktop shortcut. Then press Ctrl+R in the dashboard. Static files are re-read on each request, so a page-only change just needs Ctrl+R.
-- **Testing beside the real server:** run a second one with `PORT=4399` and `AGENTS_DATA_DIR` set to a scratch folder, so tests don't change the real `~/.claude-agents`.
+- **Testing beside the real server:** run a second one with `PORT=4399` and `TABHERD_DATA_DIR` set to a scratch folder, so tests don't change the real `~/.tabherd`.
 - **Server settings:** each key in `lib/settings.js` has a check that cleans the value or rejects it. `POST /api/settings` changes only the keys sent, all or none. A hand-edited `settings.json` is checked the same way when the server starts.
 - **Windows Terminal:** `profiles.defaults` sets `"elevate": true`. A tab opened with a command line but no profile gets that default and opens in a separate administrator instance, which also mangles the command. Always pass `-p <default profile>`. Tools can't see into or message administrator windows.
 - **Windows started hidden:** Node's `windowsHide` tells Windows to hide the first window the child process shows. For the folder picker that was its owner window, and the dialog then returned OK at once, with the start folder, never having shown. `pick-folder.ps1` shows the owner a second time to get around that. Any other script the server runs that shows a window needs the same.

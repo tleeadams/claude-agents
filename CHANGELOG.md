@@ -2,6 +2,14 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
+## 0.2.0 - 2026-11-20
+
+To update from Claude Agents 0.1.x: close its dashboard window, put this release's folder in place of the old one, run **Tabherd.exe**, then run **Install shortcuts.cmd** if you use shortcuts. The old version's server stops by itself within 10 minutes of its window closing; until then, Tabherd.exe opens the old page.
+
+- Claude Agents is now **Tabherd**. The launcher is `Tabherd.exe` and the release zip `tabherd-v<version>-windows-x64.zip`. Settings, history and to-dos move from `~/.claude-agents` to `~/.tabherd` the first time the new version starts, and the settings this browser saved carry over. **Install shortcuts.cmd** replaces the old "Claude Agents" shortcuts, and **Remove shortcuts.cmd** removes either. `TABHERD_DATA_DIR` replaces `AGENTS_DATA_DIR`.
+- The launcher's file details show its product name and version.
+- Releases are ready to be signed through SignPath Foundation, once the project is approved. The README has the code signing policy, and how to uninstall.
+
 ## 0.1.2 - 2026-11-20
 
 - History no longer lists sessions closed before Claude was asked anything. Claude saves no conversation for them, so Resume opened a tab that closed straight away.

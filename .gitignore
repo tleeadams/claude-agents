@@ -1,6 +1,9 @@
 # Built by `npm run install-shortcut`; machine-specific.
+launcher/Tabherd.exe
+# The launcher's name before the rename, still in older checkouts.
 launcher/ClaudeAgents.exe
 launcher/app.ico
+launcher/VersionInfo.cs
 launcher/node-path.txt
 # Built by `npm run build`.
 dist/

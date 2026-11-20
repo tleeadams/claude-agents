@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { draw, png } = require('../scripts/launcher');
+const { draw, png, versionInfo } = require('../scripts/launcher');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -50,4 +50,12 @@ test('the launcher icon draws', () => {
   assert.equal(pixels[3], 0, 'the rounded corner is transparent');
   assert.equal(pixels[(8 * 16 + 8) * 4 + 3], 255, 'the middle is solid');
   assert.deepEqual([...png(16, pixels).subarray(1, 4)], [...Buffer.from('PNG')]);
+});
+
+test("the launcher's file details carry the version, in numbers where they have to be", () => {
+  const info = versionInfo('0.2.0-beta.1');
+  assert.match(info, /AssemblyProduct\("Tabherd"\)/);
+  assert.match(info, /AssemblyFileVersion\("0\.2\.0\.0"\)/);
+  assert.match(info, /AssemblyInformationalVersion\("0\.2\.0-beta\.1"\)/);
+  assert.throws(() => versionInfo('1.0'), /Not a version/);
 });

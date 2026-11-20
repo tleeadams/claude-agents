@@ -76,7 +76,7 @@ Keep examples, tests and docs free of real names. Use made-up projects, folders 
 1. Start the release from `develop`: `git switch -c release/<version> develop`. Set the version in `package.json` and add a `## <version>` section to `CHANGELOG.md`; the release notes come from it. Commit, push, and open a pull request into `main`.
 2. Merge it once the checks pass and it's been reviewed.
 3. Tag the merge on `main`: `git switch main && git pull && git tag v<version> && git push origin v<version>`.
-4. The Release workflow tests, builds the zips and makes a draft release. Check it and publish it.
+4. The Release workflow tests, builds the zips and makes a draft release. Once signing is set up, it first waits up to an hour for the launcher's signing request to be approved on [signpath.io](https://app.signpath.io); an approver approves it there. Check the draft and publish it.
 5. Open a pull request from `main` into `develop`, so `develop` has the release's changes.
 
 ### Hotfixes
@@ -102,3 +102,14 @@ For maintainers, once, after creating the repository on GitHub:
 
 1. Push `main` and `develop`. The rulesets would stop pushes that create them, so they come first.
 2. With the [GitHub CLI](https://cli.github.com) signed in as an admin of the repository, run `npm run setup-github`. It applies the rulesets in `.github/rulesets`, makes `develop` the default branch, allows only merge commits, deletes branches once merged, and turns on private vulnerability reporting. It also names anyone in `.github/CODEOWNERS` who doesn't have write access yet. Running it again updates the rulesets.
+
+### Code signing
+
+The launcher is signed by [SignPath Foundation](https://signpath.org), which signs open-source projects for free, under the policy in the README. Until the project is set up there, releases ship with the launcher unsigned. To set it up:
+
+1. Apply at [signpath.org/apply](https://signpath.org/apply). Everyone on the team, on GitHub and on SignPath, needs two-factor sign-in.
+2. Once approved, on [app.signpath.io](https://app.signpath.io): link the project to the predefined GitHub.com trusted build system, and paste `.signpath/artifact-configuration.xml` into its default artifact configuration. The workflow uploads only `Tabherd.exe`. Releases are built from version tags on `main`, so if the signing policy limits what can be signed by branch, allow the `v*` tags.
+3. Make an API token for a user who can submit signing requests to the release signing policy.
+4. In the repository's settings, under **Secrets and variables → Actions**, add the token as the secret `SIGNPATH_API_TOKEN` and the organization's ID as the variable `SIGNPATH_ORGANIZATION_ID`. If the project or signing policy aren't called `tabherd` and `release-signing`, add `SIGNPATH_PROJECT_SLUG` or `SIGNPATH_POLICY_SLUG` too.
+
+The variable turns signing on. The workflow checks the signature before zipping, and fails rather than release a launcher that isn't validly signed.

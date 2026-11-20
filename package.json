@@ -1,11 +1,11 @@
 {
-  "name": "claude-agents",
-  "version": "0.1.2",
-  "description": "Local dashboard showing every running Claude Code session and its live status",
+  "name": "tabherd",
+  "version": "0.2.0",
+  "description": "A dashboard for your Claude Code sessions: which ones need you, which are working, and what they last said",
   "private": true,
   "main": "server.js",
   "bin": {
-    "claude-agents": "server.js"
+    "tabherd": "server.js"
   },
   "scripts": {
     "start": "node server.js --open",
