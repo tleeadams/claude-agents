@@ -2,6 +2,13 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
+## 0.1.1 - 2026-11-19
+
+The first release built by the release workflow on GitHub rather than by hand. The dashboard itself is the same as in 0.1.0.
+
+- CI can be run by hand, from the Actions tab or with `gh workflow run CI --ref <branch>`.
+- CONTRIBUTING.md explains how to clear a failed check left on a commit by another pull request.
+
 ## 0.1.0 - 2026-11-19
 
 The first public release. The dashboard runs anywhere Node 18 or later does. The window and terminal features, the desktop launcher and the release download are Windows-only for now.
