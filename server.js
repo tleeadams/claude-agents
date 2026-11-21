@@ -38,7 +38,10 @@ const STATIC = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
+  // The launchers check for a running server by asking for this one.
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
+  '/icons/tabherd-32.png': ['icons/tabherd-32.png', 'image/png'],
+  '/icons/tabherd-64.png': ['icons/tabherd-64.png', 'image/png'],
 };
 
 let cached = null;

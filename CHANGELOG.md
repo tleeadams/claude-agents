@@ -2,6 +2,12 @@
 
 Notable changes in each release. Version numbers follow [Semantic Versioning](https://semver.org). The release build takes each release's notes from its section here.
 
+## 0.3.1 - 2026-11-21
+
+- Tabherd can be installed with Homebrew on macOS and Linux: `brew install tleeadams/tap/tabherd`.
+- A new logo, for the page, its tab, the Windows launcher, the macOS app and the Linux menu entry. `npm run icons` makes every size from `assets/logo.png`.
+- The dashboard's buttons, links and highlights are the logo's blue, and *Shell running* is purple so it doesn't look like them. In dark mode, text on blue buttons is the logo's navy, which reads better than white did.
+
 ## 0.3.0 - 2026-11-20
 
 - **macOS and Linux** can go to a session's window, catch it up, show its tab's title, and open Claude from the repo menu, Resume and to-dos, as Windows can. Supported: Terminal, iTerm2 and Ghostty on macOS; GNOME Terminal, Ptyxis and Konsole on Linux; kitty, WezTerm and tmux on both. What each terminal can do is in the README.

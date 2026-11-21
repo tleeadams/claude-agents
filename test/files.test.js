@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { draw, png, versionInfo } = require('../scripts/launcher');
+const { icon, versionInfo } = require('../scripts/launcher');
+const { encode, decode } = require('../scripts/png');
+const { SIZES, iconFile } = require('../scripts/icons');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -44,12 +46,29 @@ test('release notes come from the changelog, with either line ending', () => {
   assert.throws(() => releaseNotes(changelog, '0.3.0'), /no notes under "## 0\.3\.0"/);
 });
 
-test('the launcher icon draws', () => {
-  const pixels = draw(16);
-  assert.equal(pixels.length, 16 * 16 * 4);
-  assert.equal(pixels[3], 0, 'the rounded corner is transparent');
-  assert.equal(pixels[(8 * 16 + 8) * 4 + 3], 255, 'the middle is solid');
-  assert.deepEqual([...png(16, pixels).subarray(1, 4)], [...Buffer.from('PNG')]);
+test('PNGs are read back as they were written', () => {
+  const rgba = Buffer.from(Array.from({ length: 3 * 2 * 4 }, (_, i) => (i * 37) % 256));
+  const back = decode(encode(3, 2, rgba));
+  assert.deepEqual([back.width, back.height], [3, 2]);
+  assert.deepEqual([...back.rgba], [...rgba]);
+});
+
+test('the icons are made from the logo, with clear corners, at every size', () => {
+  for (const size of SIZES) {
+    const { width, height, rgba } = decode(fs.readFileSync(iconFile(size)));
+    assert.deepEqual([width, height], [size, size]);
+    assert.equal(rgba[3], 0, `the ${size}px corner is transparent`);
+    const middle = ((size >> 1) * size + (size >> 1)) * 4 + 3;
+    assert.equal(rgba[middle], 255, `the ${size}px middle is solid`);
+  }
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'favicon.svg'), 'utf8'), /data:image\/png;base64,/);
+});
+
+test("the launcher's icon holds each size", () => {
+  const ico = icon([16, 32, 256]);
+  assert.equal(ico.readUInt16LE(2), 1, 'an icon file');
+  assert.equal(ico.readUInt16LE(4), 3, 'three images');
+  assert.deepEqual([ico[6], ico[22], ico[38]], [16, 32, 0], '256 is written as 0');
 });
 
 test("the launcher's file details carry the version, in numbers where they have to be", () => {
