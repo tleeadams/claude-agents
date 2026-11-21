@@ -14,7 +14,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { draw, png } = require('./launcher');
+const { iconFile } = require('./icons');
 const { version } = require('../package.json');
 
 const HOME = os.homedir();
@@ -23,7 +23,7 @@ const DESKTOP = path.join(HOME, '.local', 'share', 'applications', 'tabherd.desk
 const ICON = path.join(HOME, '.local', 'share', 'icons', 'hicolor', '256x256', 'apps', 'tabherd.png');
 const MAC_APP = path.join(HOME, 'Applications', 'Tabherd.app');
 
-const pngIcon = (size) => png(size, draw(size));
+const pngIcon = (size) => fs.readFileSync(iconFile(size));
 
 // An .icns file holding PNG images at the sizes macOS uses.
 function icns() {

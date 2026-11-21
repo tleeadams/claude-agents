@@ -1,3 +1,5 @@
+<p align="center"><img src="public/icons/tabherd-128.png" width="96" height="96" alt="Tabherd"></p>
+
 # Tabherd
 
 **A dashboard for your Claude Code sessions.** Tabherd lists every [Claude Code](https://code.claude.com) session running on your computer and shows what each one is doing: which ones need you, which are working, and what they last said. It watches the sessions you start anyway, in any terminal, with nothing to set up in Claude Code. It runs entirely on your computer and has no dependencies beyond Node.
@@ -63,7 +65,7 @@ npm run install-shortcut     # add Tabherd to the Start menu, Applications or ap
 npm run uninstall-shortcut   # remove it again
 ```
 
-On Windows the launcher is a small C# program (`launcher/Tabherd.cs`), compiled with the C# compiler that comes with Windows, with its icon drawn from the same shapes as the favicon. Run the install again after moving the folder or switching Node versions; it records which `node.exe` to use. On macOS and Linux it's a shell script, `launcher/tabherd.sh`, which uses the `node` on your PATH.
+On Windows the launcher is a small C# program (`launcher/Tabherd.cs`), compiled with the C# compiler that comes with Windows, with its icon made from the logo. Run the install again after moving the folder or switching Node versions; it records which `node.exe` to use. On macOS and Linux it's a shell script, `launcher/tabherd.sh`, which uses the `node` on your PATH.
 
 ## Platform support
 
@@ -228,6 +230,7 @@ npm run setup      # once after cloning: turn on the git hooks for the branch ru
 npm test           # the tests, with Node's built-in test runner
 npm run build      # build the release zip for this platform into dist/
 npm run check-terminals   # check driving each terminal here, with a stand-in session
+npm run icons      # make the icons in public/icons from assets/logo.png, after changing it
 ```
 
 There are no dependencies to install. CI runs the tests on Windows, macOS and Linux, with Node 18 and 24, and builds the Windows zip, on every pull request and every push to `main` and `develop`. [NOTES.md](NOTES.md) has working notes: what's planned, what isn't confirmed yet, and the Windows quirks found along the way.
