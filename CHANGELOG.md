@@ -5,6 +5,7 @@ Notable changes in each release. Version numbers follow [Semantic Versioning](ht
 ## Unreleased
 
 - Tabherd can be installed with Homebrew on macOS and Linux: `brew install tleeadams/tap/tabherd`.
+- A new logo, for the page, its tab, the Windows launcher, the macOS app and the Linux menu entry. `npm run icons` makes every size from `assets/logo.png`.
 
 ## 0.3.0 - 2026-11-20
 
