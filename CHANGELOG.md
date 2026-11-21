@@ -6,6 +6,7 @@ Notable changes in each release. Version numbers follow [Semantic Versioning](ht
 
 - Tabherd can be installed with Homebrew on macOS and Linux: `brew install tleeadams/tap/tabherd`.
 - A new logo, for the page, its tab, the Windows launcher, the macOS app and the Linux menu entry. `npm run icons` makes every size from `assets/logo.png`.
+- The dashboard's buttons, links and highlights are the logo's blue, and *Shell running* is purple so it doesn't look like them. In dark mode, text on blue buttons is the logo's navy, which reads better than white did.
 
 ## 0.3.0 - 2026-11-20
 

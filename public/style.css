@@ -9,11 +9,15 @@
   --text: light-dark(#1f1e1b, #ecebe6);
   --muted: light-dark(#6b6760, #a7a39a);
   --faint: light-dark(#9b978e, #77736b);
-  --accent: light-dark(#c96442, #d97757);
+  /* The logo's blue. Text on it is white in light mode, the logo's navy in
+     dark mode, where the blue is brighter. */
+  --accent: light-dark(#0a6cdc, #4a9dff);
+  --on-accent: light-dark(#ffffff, #0b1f3a);
   --busy: light-dark(#1f8a5b, #4cc38a);
   --busy-bg: light-dark(#e3f4ea, #17382a);
-  --shell: light-dark(#2f6fb3, #6aa5e6);
-  --shell-bg: light-dark(#e4eefa, #1a2c42);
+  /* The logo's purple, so "Shell running" doesn't look like the blue buttons. */
+  --shell: light-dark(#6d3fd1, #a98bf5);
+  --shell-bg: light-dark(#ede7fb, #2a2142);
   --wait: light-dark(#b56d00, #f0a83a);
   --wait-bg: light-dark(#fdf0d9, #3d2c0f);
   --idle: light-dark(#85817a, #8f8b83);
@@ -385,7 +389,7 @@ main { padding: 20px 24px 48px; }
 .btn:disabled { opacity: 0.5; cursor: progress; }
 .actions .btn-stop { margin-left: auto; color: var(--danger); }
 .actions .btn-stop:hover { border-color: var(--danger); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .btn-primary:hover { background: var(--accent); border-color: var(--accent); filter: brightness(1.08); }
 .btn-accent { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); font-weight: 600; }
 .btn-accent:hover { border-color: var(--accent); }
